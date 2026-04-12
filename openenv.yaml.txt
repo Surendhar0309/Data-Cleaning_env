@@ -1,0 +1,151 @@
+name: data-cleaning-analytics
+version: 1.0.0
+description: A real-world data cleaning and analytics environment where agents learn to clean messy datasets, handle missing values, detect anomalies, and prepare data for analysis.
+
+author:
+  name: Surendhar V
+  email: ksurendhar95@gmail.com
+
+tags:
+  - data-cleaning
+  - analytics
+  - data-preparation
+  - real-world
+
+action:
+  type: object
+  title: CleaningAction
+  description: Data cleaning operations
+  properties:
+    action_type:
+      type: string
+      enum:
+        - handle_missing
+        - detect_anomaly
+        - standardize
+        - validate
+        - aggregate
+      description: Type of cleaning action
+    column_name:
+      type: string
+      description: Target column for the action
+    method:
+      type: string
+      enum:
+        - mean
+        - median
+        - delete
+        - forward_fill
+        - lowercase
+        - uppercase
+        - title_case
+        - minmax
+        - zscore
+      nullable: true
+      description: Method for handling or standardizing
+    value:
+      type: number
+      nullable: true
+      description: Optional value for manual imputation
+    threshold:
+      type: number
+      nullable: true
+      description: Threshold for anomaly detection
+
+observation:
+  type: object
+  title: Observation
+  description: Current state of the dataset
+  properties:
+    current_row_index:
+      type: integer
+      description: Current row being processed
+    total_rows:
+      type: integer
+      description: Total number of rows in dataset
+    missing_columns:
+      type: array
+      items:
+        type: string
+      description: Columns with missing values
+    anomaly_columns:
+      type: array
+      items:
+        type: string
+      description: Columns with detected anomalies
+    standardized_columns:
+      type: array
+      items:
+        type: string
+      description: Already standardized columns
+    data_quality_score:
+      type: number
+      minimum: 0.0
+      maximum: 1.0
+      description: Current data quality score
+    last_action_result:
+      type: string
+      description: Result message from last action
+    completion_percentage:
+      type: number
+      minimum: 0.0
+      maximum: 100.0
+      description: Task completion percentage
+
+reward:
+  type: object
+  title: Reward
+  description: Reward signal
+  properties:
+    immediate_reward:
+      type: number
+      description: Reward for this step
+    cumulative_reward:
+      type: number
+      description: Total reward so far
+    bonus_flags:
+      type: object
+      additionalProperties:
+        type: boolean
+      description: Achievement flags
+
+state:
+  type: object
+  title: State
+  description: Complete environment state
+  properties:
+    dataset:
+      type: array
+      items:
+        type: object
+      description: Current dataset
+    metadata:
+      type: object
+      description: Dataset metadata
+    actions_taken:
+      type: array
+      items:
+        type: object
+      description: Action history
+    episode_step:
+      type: integer
+      description: Current episode step
+
+tasks:
+  - name: easy_sales_cleaning
+    description: Clean a sales dataset with missing amounts, quantities, and category values. Learn to handle NULL values and standardize status field.
+    difficulty: easy
+    target_quality: 0.85
+    steps_limit: 100
+    
+  - name: medium_customer_cleaning
+    description: Clean customer data with inconsistent names, countries, invalid ages, and missing email/LTV values. Handle format normalization and outlier detection.
+    difficulty: medium
+    target_quality: 0.80
+    steps_limit: 100
+    
+  - name: hard_survey_analytics
+    description: Clean survey response data with missing ratings, invalid NPS scores, anomalies in completion times, and inconsistent device types. Achieve high quality with minimal actions.
+    difficulty: hard
+    target_quality: 0.75
+    steps_limit: 100
