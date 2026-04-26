@@ -1,252 +1,285 @@
 <!DOCTYPE html>
-<html lang="en" class="bg-gray-950">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Data Cleaning Environment</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
   <script>
     tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            mono: ['Space Mono', 'monospace'],
-            sans: ['DM Sans', 'sans-serif'],
-          },
-          colors: {
-            brand: { DEFAULT: '#3ddc84', dim: '#1a4a30' }
-          }
-        }
-      }
+      theme: { extend: { fontFamily: { mono:['Space Mono','monospace'], sans:['DM Sans','sans-serif'] } } }
     }
   </script>
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen">
 
   <!-- Header -->
-  <header class="sticky top-0 z-10 flex items-center justify-between px-7 py-3.5 bg-gray-900 border-b border-gray-800">
-    <div class="flex items-center gap-5">
+  <header class="sticky top-0 z-20 flex items-center justify-between px-6 py-3 bg-gray-900 border-b border-gray-800 gap-4 flex-wrap">
+    <div class="flex items-center gap-4">
       <div class="flex items-center gap-2">
         <span class="text-green-400 text-lg">⬡</span>
-        <span class="mono text-sm font-bold tracking-wide">DataClean<span class="text-green-400">ENV</span></span>
+        <span class="mono text-sm font-bold">DataClean<span class="text-green-400">ENV</span></span>
       </div>
       <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-800 border border-gray-700">
-        <span id="statusDot" class="w-1.5 h-1.5 rounded-full bg-gray-600"></span>
-        <span id="statusLabel" class="mono text-[10px] text-gray-400">connecting...</span>
+        <span id="statusDot" class="status-dot-connecting"></span>
+        <span id="statusLabel" class="mono text-[10px] text-gray-400">offline</span>
       </div>
     </div>
 
-    <!-- Server URL config -->
+    <!-- Server URL -->
     <div class="flex items-center gap-2">
-      <span class="mono text-[9px] text-gray-600 hidden sm:block">SERVER</span>
-      <input id="serverUrlInput" type="text" placeholder="http://localhost:7860"
-        class="bg-gray-800 border border-gray-700 rounded-md text-gray-300 mono text-[10px] py-1 px-2 w-52 outline-none focus:border-green-500 transition-colors placeholder-gray-600" />
-      <button id="serverUrlSave"
-        class="mono text-[9px] font-bold px-2.5 py-1 rounded-md bg-gray-700 border border-gray-600 text-gray-300 hover:border-green-500 hover:text-green-400 transition-all">
+      <span class="mono text-[10px] text-gray-600">SERVER</span>
+      <input id="serverUrl" type="text" value="http://localhost:7860"
+        class="mono text-[11px] bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-gray-300 outline-none focus:border-green-500 w-52 transition-colors" />
+      <button onclick="reconnect()"
+        class="mono text-[10px] font-bold px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-gray-300 hover:border-green-500 hover:text-green-400 transition-all">
         Connect
       </button>
-      <span class="mono text-[10px] text-gray-600">OpenEnv · v2.0.0</span>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex items-center gap-1 bg-gray-800 rounded-lg p-1">
+      <button id="tabEnv"    onclick="switchTab('env')"    class="tab-btn active-tab mono text-[10px] px-3 py-1 rounded-md">ENVIRONMENT</button>
+      <button id="tabUpload" onclick="switchTab('upload')" class="tab-btn mono text-[10px] px-3 py-1 rounded-md">FILE UPLOAD</button>
     </div>
   </header>
 
-  <main class="max-w-5xl mx-auto px-7 py-6">
+  <main class="max-w-5xl mx-auto px-6 py-6">
 
-    <!-- Task Selector -->
-    <div class="mb-4">
-      <p class="mono text-[9px] tracking-widest text-gray-600 mb-2.5">SELECT TASK</p>
-      <div class="grid grid-cols-3 gap-3" id="taskGrid">
+    <!-- ══ TAB: ENVIRONMENT ══ -->
+    <div id="panelEnv">
 
-        <div class="task-card relative cursor-pointer rounded-xl bg-gray-900 border border-gray-700 p-3.5 hover:border-gray-600 transition-all overflow-hidden bg-gray-800"
-             data-task="easy_sales_cleaning" data-difficulty="easy" data-target="0.85" data-rows="30">
-          <div class="absolute top-0 left-0 right-0 h-0.5 bg-green-400 rounded-t-xl task-bar"></div>
-          <div class="flex items-center justify-between mb-2">
-            <span class="mono text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded text-green-400 bg-green-400/10">EASY</span>
-            <span class="mono text-[10px] text-gray-600">30 rows</span>
+      <!-- Task cards -->
+      <div class="mb-5">
+        <p class="mono text-[9px] tracking-widest text-gray-600 mb-2.5">SELECT TASK</p>
+        <div class="grid grid-cols-3 gap-3" id="taskGrid">
+
+          <div class="task-card selected rounded-xl bg-gray-900 border border-gray-700 p-3.5 overflow-hidden"
+               data-task="easy_sales_cleaning" data-difficulty="easy" data-target="0.85">
+            <div class="task-bar" style="background:#4ade80"></div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="mono text-[9px] font-bold px-1.5 py-0.5 rounded text-green-400 bg-green-400/10">EASY</span>
+              <span class="mono text-[10px] text-gray-600">30 rows</span>
+            </div>
+            <div class="text-sm font-semibold mb-1">Sales Cleaning</div>
+            <div class="text-[11px] text-gray-400 leading-snug mb-2">Missing amounts, quantities & status inconsistencies</div>
+            <div class="mono text-[10px] text-gray-600">Target: 85%</div>
           </div>
-          <div class="text-sm font-semibold mb-1">Sales Cleaning</div>
-          <div class="text-[11px] text-gray-400 leading-snug mb-2">Missing amounts, quantities &amp; inconsistent status</div>
-          <div class="mono text-[10px] text-gray-600">Target quality: 85%</div>
-        </div>
 
-        <div class="task-card relative cursor-pointer rounded-xl bg-gray-900 border border-gray-700 p-3.5 hover:border-gray-600 transition-all overflow-hidden"
-             data-task="medium_customer_cleaning" data-difficulty="medium" data-target="0.80" data-rows="40">
-          <div class="absolute top-0 left-0 right-0 h-0.5 bg-transparent rounded-t-xl task-bar"></div>
-          <div class="flex items-center justify-between mb-2">
-            <span class="mono text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded text-amber-400 bg-amber-400/10">MEDIUM</span>
-            <span class="mono text-[10px] text-gray-600">40 rows</span>
+          <div class="task-card rounded-xl bg-gray-900 border border-gray-700 p-3.5 overflow-hidden"
+               data-task="medium_customer_cleaning" data-difficulty="medium" data-target="0.80">
+            <div class="task-bar"></div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="mono text-[9px] font-bold px-1.5 py-0.5 rounded text-amber-400 bg-amber-400/10">MEDIUM</span>
+              <span class="mono text-[10px] text-gray-600">40 rows</span>
+            </div>
+            <div class="text-sm font-semibold mb-1">Customer Cleaning</div>
+            <div class="text-[11px] text-gray-400 leading-snug mb-2">Invalid ages, name formats & missing LTV values</div>
+            <div class="mono text-[10px] text-gray-600">Target: 80%</div>
           </div>
-          <div class="text-sm font-semibold mb-1">Customer Cleaning</div>
-          <div class="text-[11px] text-gray-400 leading-snug mb-2">Invalid ages, name formats, missing emails &amp; LTV</div>
-          <div class="mono text-[10px] text-gray-600">Target quality: 80%</div>
-        </div>
 
-        <div class="task-card relative cursor-pointer rounded-xl bg-gray-900 border border-gray-700 p-3.5 hover:border-gray-600 transition-all overflow-hidden"
-             data-task="hard_survey_analytics" data-difficulty="hard" data-target="0.75" data-rows="50">
-          <div class="absolute top-0 left-0 right-0 h-0.5 bg-transparent rounded-t-xl task-bar"></div>
-          <div class="flex items-center justify-between mb-2">
-            <span class="mono text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded text-red-400 bg-red-400/10">HARD</span>
-            <span class="mono text-[10px] text-gray-600">50 rows</span>
+          <div class="task-card rounded-xl bg-gray-900 border border-gray-700 p-3.5 overflow-hidden"
+               data-task="hard_survey_analytics" data-difficulty="hard" data-target="0.75">
+            <div class="task-bar"></div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="mono text-[9px] font-bold px-1.5 py-0.5 rounded text-red-400 bg-red-400/10">HARD</span>
+              <span class="mono text-[10px] text-gray-600">50 rows</span>
+            </div>
+            <div class="text-sm font-semibold mb-1">Survey Analytics</div>
+            <div class="text-[11px] text-gray-400 leading-snug mb-2">Anomalous NPS scores, invalid ranges & mixed devices</div>
+            <div class="mono text-[10px] text-gray-600">Target: 75%</div>
           </div>
-          <div class="text-sm font-semibold mb-1">Survey Analytics</div>
-          <div class="text-[11px] text-gray-400 leading-snug mb-2">Anomalous NPS scores, invalid ranges, mixed devices</div>
-          <div class="mono text-[10px] text-gray-600">Target quality: 75%</div>
         </div>
-
       </div>
 
-      <!-- Upload custom CSV -->
-      <div class="mt-3 bg-gray-900 border border-gray-700 border-dashed rounded-xl p-3.5 flex flex-col gap-2">
-        <p class="mono text-[9px] tracking-widest text-gray-600">OR UPLOAD YOUR OWN CSV</p>
-        <div class="flex items-center gap-2 flex-wrap">
-          <label class="relative cursor-pointer">
-            <input id="uploadInput" type="file" accept=".csv" class="absolute inset-0 opacity-0 w-full cursor-pointer" />
-            <span class="mono text-[10px] font-bold px-3 py-1.5 rounded-md bg-gray-800 border border-gray-600 text-gray-300 hover:border-green-500 hover:text-green-400 transition-all inline-block">
-              📂 Choose CSV
-            </span>
-          </label>
-          <button id="uploadBtn"
-            class="mono text-[10px] font-bold px-3 py-1.5 rounded-md bg-blue-900/40 border border-blue-700/50 text-blue-300 hover:border-blue-400 hover:text-blue-200 transition-all">
-            ↑ Upload &amp; Load
-          </button>
-          <span id="uploadStatus" class="mono text-[10px] text-gray-500 hidden"></span>
+      <!-- Error banner (no more alert popups) -->
+      <div id="errorBanner" class="hidden mb-4 flex items-center gap-3 bg-red-900/20 border border-red-800/40 rounded-xl px-4 py-3">
+        <span class="text-red-400 text-lg flex-shrink-0">⚠</span>
+        <div class="flex-1">
+          <div class="text-sm font-medium text-red-300">Server not reachable</div>
+          <div id="errorMsg" class="mono text-[10px] text-red-500 mt-0.5">Enter your server URL above and click Connect.</div>
         </div>
-        <div id="uploadTaskBadge" class="hidden mono text-[10px] text-green-400 bg-green-900/20 border border-green-800/30 rounded-md px-2.5 py-1 w-fit">
-        </div>
+        <button onclick="document.getElementById('errorBanner').classList.add('hidden')" class="text-red-500 hover:text-red-300 text-xl leading-none flex-shrink-0">×</button>
       </div>
-    </div>
 
-    <!-- Dashboard -->
-    <div class="grid grid-cols-[340px_1fr] gap-3 items-start">
+      <!-- Dashboard grid -->
+      <div class="grid gap-3 items-start" style="grid-template-columns:340px 1fr">
 
-      <!-- Left Panel -->
-      <div class="flex flex-col gap-3">
+        <!-- Left -->
+        <div class="flex flex-col gap-3">
 
-        <!-- Metrics + Quality -->
-        <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
-          <p class="mono text-[9px] tracking-widest text-gray-600 mb-3">EPISODE STATE</p>
-          <div class="grid grid-cols-3 gap-2 mb-4">
-            <div class="bg-gray-800 rounded-lg p-2.5 text-center border border-gray-700">
-              <div id="metricSteps" class="mono text-xl font-bold text-gray-100 leading-none mb-1">0</div>
-              <div class="mono text-[9px] tracking-wider text-gray-500">steps</div>
+          <!-- Metrics + Quality -->
+          <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
+            <p class="mono text-[9px] tracking-widest text-gray-600 mb-3">EPISODE STATE</p>
+            <div class="grid grid-cols-3 gap-2 mb-4">
+              <div class="bg-gray-800 rounded-lg p-2.5 text-center border border-gray-700">
+                <div id="metricSteps"   class="mono text-xl font-bold leading-none mb-1">0</div>
+                <div class="mono text-[9px] text-gray-500">steps</div>
+              </div>
+              <div class="bg-gray-800 rounded-lg p-2.5 text-center border border-gray-700">
+                <div id="metricReward"  class="mono text-xl font-bold leading-none mb-1">0.00</div>
+                <div class="mono text-[9px] text-gray-500">reward</div>
+              </div>
+              <div class="bg-gray-800 rounded-lg p-2.5 text-center border border-gray-700">
+                <div id="metricComplete" class="mono text-xl font-bold leading-none mb-1">0%</div>
+                <div class="mono text-[9px] text-gray-500">complete</div>
+              </div>
             </div>
-            <div class="bg-gray-800 rounded-lg p-2.5 text-center border border-gray-700">
-              <div id="metricReward" class="mono text-xl font-bold text-gray-100 leading-none mb-1">0.00</div>
-              <div class="mono text-[9px] tracking-wider text-gray-500">reward</div>
-            </div>
-            <div class="bg-gray-800 rounded-lg p-2.5 text-center border border-gray-700">
-              <div id="metricComplete" class="mono text-xl font-bold text-gray-100 leading-none mb-1">0%</div>
-              <div class="mono text-[9px] tracking-wider text-gray-500">complete</div>
-            </div>
-          </div>
-
-          <div>
             <div class="flex justify-between items-center mb-1.5">
               <span class="mono text-[9px] tracking-widest text-gray-600">DATA QUALITY</span>
               <span id="qualityValue" class="mono text-sm font-bold text-green-400">—</span>
             </div>
             <div class="relative mb-1">
               <div class="bg-gray-800 rounded h-2 border border-gray-700 overflow-hidden">
-                <div id="qualityFill" class="quality-fill h-full rounded bg-gradient-to-r from-green-900 to-green-400" style="width:0%"></div>
+                <div id="qualityFill" class="quality-fill good" style="width:0%"></div>
               </div>
               <div id="targetMarker" class="absolute top-[-3px] w-0.5 h-3.5 bg-gray-500 rounded" style="left:85%"></div>
             </div>
             <div class="flex justify-between mono text-[9px] text-gray-600">
-              <span>0%</span>
-              <span id="targetLabel">target 85%</span>
-              <span>100%</span>
+              <span>0%</span><span id="targetLabel">target 85%</span><span>100%</span>
             </div>
           </div>
-        </div>
 
-        <!-- Column Status -->
-        <div id="colStatusCard" class="bg-gray-900 border border-gray-800 rounded-xl p-4 hidden">
-          <p class="mono text-[9px] tracking-widest text-gray-600 mb-3">COLUMN STATUS</p>
-          <div id="missingCols"></div>
-          <div id="anomalyCols"></div>
-          <div id="standardizedCols"></div>
-          <div id="lastAction" class="hidden text-[11px] text-gray-400 italic pt-2 mt-1 border-t border-gray-800 leading-snug"></div>
-        </div>
-
-        <!-- Action Composer -->
-        <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
-          <p class="mono text-[9px] tracking-widest text-gray-600 mb-3">ACTION COMPOSER</p>
-
-          <div class="mb-2.5">
-            <label class="mono text-[9px] tracking-widest text-gray-600 block mb-1.5">ACTION TYPE</label>
-            <select id="actionType" class="w-full bg-gray-800 border border-gray-700 rounded-md text-gray-100 mono text-xs py-1.5 px-2.5 outline-none focus:border-green-500 transition-colors">
-              <option value="handle_missing">handle_missing</option>
-              <option value="detect_anomaly">detect_anomaly</option>
-              <option value="standardize">standardize</option>
-              <option value="validate">validate</option>
-              <option value="aggregate">aggregate</option>
-            </select>
+          <!-- Column status -->
+          <div id="colStatusCard" class="hidden bg-gray-900 border border-gray-800 rounded-xl p-4">
+            <p class="mono text-[9px] tracking-widest text-gray-600 mb-3">COLUMN STATUS</p>
+            <div id="missingCols"></div>
+            <div id="anomalyCols"></div>
+            <div id="standardizedCols"></div>
+            <div id="lastAction" class="hidden text-[11px] text-gray-400 italic pt-2 mt-1 border-t border-gray-800"></div>
           </div>
 
-          <div class="mb-2.5">
-            <label class="mono text-[9px] tracking-widest text-gray-600 block mb-1.5">COLUMN NAME</label>
-            <input id="columnName" type="text" list="colSuggestions" placeholder="e.g. amount, age, status"
-              class="w-full bg-gray-800 border border-gray-700 rounded-md text-gray-100 mono text-xs py-1.5 px-2.5 outline-none focus:border-green-500 transition-colors placeholder-gray-600" />
-            <datalist id="colSuggestions"></datalist>
+          <!-- Action composer -->
+          <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
+            <p class="mono text-[9px] tracking-widest text-gray-600 mb-3">ACTION COMPOSER</p>
+            <div class="mb-2.5">
+              <label class="mono text-[9px] tracking-widest text-gray-600 block mb-1.5">ACTION TYPE</label>
+              <select id="actionType" class="form-control">
+                <option value="handle_missing">handle_missing</option>
+                <option value="detect_anomaly">detect_anomaly</option>
+                <option value="standardize">standardize</option>
+                <option value="validate">validate</option>
+                <option value="aggregate">aggregate</option>
+              </select>
+            </div>
+            <div class="mb-2.5">
+              <label class="mono text-[9px] tracking-widest text-gray-600 block mb-1.5">COLUMN NAME</label>
+              <input id="columnName" type="text" list="colSuggestions" placeholder="e.g. amount, age, status" class="form-control" />
+              <datalist id="colSuggestions"></datalist>
+            </div>
+            <div id="methodGroup" class="mb-2.5">
+              <label class="mono text-[9px] tracking-widest text-gray-600 block mb-1.5">METHOD</label>
+              <select id="method" class="form-control">
+                <option value="mean">mean</option>
+                <option value="median">median</option>
+                <option value="delete">delete</option>
+                <option value="forward_fill">forward_fill</option>
+              </select>
+            </div>
+            <div id="thresholdGroup" class="mb-2.5 hidden">
+              <label class="mono text-[9px] tracking-widest text-gray-600 block mb-1.5">THRESHOLD (σ): <span id="thresholdVal">2.5</span></label>
+              <input type="range" id="threshold" min="1" max="5" step="0.1" value="2.5" class="w-full" />
+            </div>
           </div>
 
-          <div id="methodGroup" class="mb-2.5">
-            <label class="mono text-[9px] tracking-widest text-gray-600 block mb-1.5">METHOD</label>
-            <select id="method" class="w-full bg-gray-800 border border-gray-700 rounded-md text-gray-100 mono text-xs py-1.5 px-2.5 outline-none focus:border-green-500 transition-colors">
-              <option value="mean">mean</option>
-              <option value="median">median</option>
-              <option value="delete">delete</option>
-              <option value="forward_fill">forward_fill</option>
-            </select>
+          <!-- Controls -->
+          <div class="flex gap-2">
+            <button id="btnReset" class="btn-reset flex-1">Start Episode</button>
+            <button id="btnStep" disabled class="btn-step flex-[2]">Execute Step</button>
           </div>
 
-          <div id="thresholdGroup" class="mb-2.5 hidden">
-            <label class="mono text-[9px] tracking-widest text-gray-600 block mb-1.5">THRESHOLD (σ): <span id="thresholdVal">2.5</span></label>
-            <input type="range" id="threshold" min="1" max="5" step="0.1" value="2.5" class="w-full" />
+          <div id="gradeBox" class="hidden"></div>
+        </div>
+
+        <!-- Log -->
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 flex flex-col" style="min-height:500px;max-height:700px">
+          <p class="mono text-[9px] tracking-widest text-gray-600 mb-3">EPISODE LOG</p>
+          <div id="logContainer" class="flex-1 overflow-y-auto min-h-0">
+            <div id="logEmpty" class="text-center text-gray-600 text-xs italic py-16">Start an episode to begin</div>
           </div>
-        </div>
-
-        <!-- Buttons -->
-        <div class="flex gap-2">
-          <button id="btnReset" class="flex-1 py-2 px-3 rounded-lg border border-gray-700 bg-gray-800 text-gray-400 mono text-xs font-bold tracking-wide hover:border-gray-500 hover:text-gray-200 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
-            Start Episode
-          </button>
-          <button id="btnStep" disabled class="flex-[2] py-2 px-3 rounded-lg bg-green-400 text-gray-950 mono text-xs font-bold tracking-wide hover:bg-green-300 transition-all disabled:bg-green-900 disabled:text-gray-600 disabled:cursor-not-allowed">
-            Execute Step
-          </button>
-        </div>
-
-        <!-- Download Button -->
-        <button id="btnDownload" disabled
-          class="w-full py-2 px-3 rounded-lg border border-blue-700/50 bg-blue-900/20 text-blue-400 mono text-xs font-bold tracking-wide hover:border-blue-500 hover:bg-blue-900/40 hover:text-blue-200 transition-all disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center gap-1.5">
-          ↓ Download Cleaned CSV
-        </button>
-
-        <!-- Grade Result -->
-        <div id="gradeBox" class="hidden p-3.5 rounded-lg border">
-          <div id="gradeTitle" class="font-semibold text-sm mb-1"></div>
-          <div id="gradeDetail" class="mono text-[10px] text-gray-400"></div>
-        </div>
-
-      </div>
-
-      <!-- Right Panel: Log -->
-      <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 flex flex-col" style="min-height:520px; max-height:680px;">
-        <p class="mono text-[9px] tracking-widest text-gray-600 mb-3">EPISODE LOG</p>
-        <div id="logContainer" class="flex-1 overflow-y-auto min-h-0">
-          <div id="logEmpty" class="text-center text-gray-600 text-xs italic py-16">Start an episode to begin</div>
-        </div>
-        <div id="logFooter" class="hidden flex justify-between pt-2.5 mt-2 border-t border-gray-800 mono text-[10px] text-gray-600">
-          <span id="logCount">0 actions</span>
-          <span id="logTotal">Σ 0.000</span>
+          <div id="logFooter" class="hidden flex justify-between pt-2.5 mt-2 border-t border-gray-800 mono text-[10px] text-gray-600">
+            <span id="logCount">0 actions</span>
+            <span id="logTotal">Σ 0.000</span>
+          </div>
         </div>
       </div>
+    </div>
 
+    <!-- ══ TAB: FILE UPLOAD (100% client-side) ══ -->
+    <div id="panelUpload" class="hidden">
+
+      <div id="dropZone"
+        class="drop-zone border-2 border-dashed border-gray-700 rounded-2xl p-14 text-center cursor-pointer mb-5"
+        onclick="document.getElementById('fileInput').click()"
+        ondragover="handleDragOver(event)"
+        ondragleave="handleDragLeave(event)"
+        ondrop="handleDrop(event)">
+        <div class="text-5xl mb-3">📂</div>
+        <p class="text-gray-200 font-semibold text-lg mb-1">Drop your CSV file here</p>
+        <p class="text-gray-500 text-sm mb-5">or click to browse · parsed entirely in your browser</p>
+        <span class="mono text-[10px] px-3 py-1.5 rounded-full border border-gray-700 text-gray-500">.csv only · no server required</span>
+        <input type="file" id="fileInput" accept=".csv" class="hidden" onchange="handleFileSelect(event)" />
+      </div>
+
+      <!-- File bar -->
+      <div id="fileInfoBar" class="hidden bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 flex items-center justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <span class="text-2xl">📄</span>
+          <div>
+            <div id="fileName" class="text-sm font-semibold text-gray-200"></div>
+            <div id="fileSize" class="mono text-[10px] text-gray-500 mt-0.5"></div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="downloadCleaned()" id="btnDownload" class="hidden mono text-[10px] font-bold px-3 py-1.5 rounded-lg bg-green-900/30 border border-green-800/50 text-green-400 hover:bg-green-900/60 transition-all">
+            ↓ Download Cleaned CSV
+          </button>
+          <button onclick="clearFile()" class="mono text-[10px] text-gray-500 hover:text-red-400 px-2 py-1 border border-gray-700 rounded hover:border-red-800 transition-colors">✕ clear</button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div id="statsRow" class="hidden grid grid-cols-4 gap-3 mb-4">
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-3.5 text-center">
+          <div id="statRows"    class="mono text-2xl font-bold mb-1">—</div>
+          <div class="mono text-[9px] tracking-wider text-gray-600">ROWS</div>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-3.5 text-center">
+          <div id="statCols"    class="mono text-2xl font-bold mb-1">—</div>
+          <div class="mono text-[9px] tracking-wider text-gray-600">COLUMNS</div>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-3.5 text-center">
+          <div id="statMissing" class="mono text-2xl font-bold text-red-400 mb-1">—</div>
+          <div class="mono text-[9px] tracking-wider text-gray-600">MISSING CELLS</div>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-3.5 text-center">
+          <div id="statQuality" class="mono text-2xl font-bold text-green-400 mb-1">—</div>
+          <div class="mono text-[9px] tracking-wider text-gray-600">QUALITY SCORE</div>
+        </div>
+      </div>
+
+      <!-- Column analysis -->
+      <div id="colAnalysis" class="hidden bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4">
+        <p class="mono text-[9px] tracking-widest text-gray-600 mb-3">COLUMN ANALYSIS</p>
+        <div id="colAnalysisGrid" class="grid grid-cols-2 gap-2.5"></div>
+      </div>
+
+      <!-- Preview -->
+      <div id="previewSection" class="hidden bg-gray-900 border border-gray-800 rounded-xl p-4">
+        <div class="flex items-center justify-between mb-3">
+          <p class="mono text-[9px] tracking-widest text-gray-600">DATA PREVIEW</p>
+          <span id="previewNote" class="mono text-[9px] text-gray-600"></span>
+        </div>
+        <div class="overflow-x-auto">
+          <table id="previewTable" class="w-full text-[11px]">
+            <thead id="previewHead"></thead>
+            <tbody id="previewBody"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </main>
-
   <script src="app.js"></script>
 </body>
 </html>
