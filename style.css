@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════
-   Data Cleaning Environment — Custom Styles
+   Data Cleaning Environment — Custom Styles  v2.0
    Used alongside Tailwind CSS (loaded via CDN)
    ═══════════════════════════════════════════════════════ */
 
@@ -25,16 +25,9 @@ body {
 }
 
 /* ── Scrollbar ──────────────────────────────────────────── */
-::-webkit-scrollbar {
-  width: 4px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #374151;
-  border-radius: 2px;
-}
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #374151; border-radius: 2px; }
 
 /* ── Select Dropdown Arrow ──────────────────────────────── */
 select {
@@ -93,13 +86,55 @@ input[type="range"] {
   overflow: hidden;
 }
 
-.task-card:hover {
-  background-color: #1f2937;
+.task-card:hover { background-color: #1f2937; }
+.task-card.selected { background-color: #1f2937; border-color: #374151; }
+
+/* ── Upload Zone ────────────────────────────────────────── */
+.upload-zone {
+  border: 1.5px dashed #374151;
+  border-radius: 12px;
+  padding: 12px 14px;
+  transition: border-color 0.2s, background 0.2s;
+  cursor: pointer;
 }
 
-.task-card.selected {
-  background-color: #1f2937;
-  border-color: #374151;
+.upload-zone:hover {
+  border-color: #4ade80;
+  background-color: rgba(74, 222, 128, 0.04);
+}
+
+.upload-zone.dragover {
+  border-color: #4ade80;
+  background-color: rgba(74, 222, 128, 0.08);
+}
+
+/* ── Upload badge ───────────────────────────────────────── */
+#uploadTaskBadge {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  transition: opacity 0.2s;
+}
+
+/* ── Download Button ────────────────────────────────────── */
+#btnDownload {
+  font-family: 'Space Mono', monospace;
+  letter-spacing: 0.04em;
+  transition: all 0.15s;
+}
+
+#btnDownload:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+#btnDownload:not(:disabled):active {
+  transform: translateY(0);
+}
+
+/* ── Server URL input ───────────────────────────────────── */
+#serverUrlInput {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
 }
 
 /* ── Log Entry Animation ────────────────────────────────── */
@@ -110,37 +145,25 @@ input[type="range"] {
 }
 
 @keyframes fadeSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(5px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ── Status Dot Pulse (online) ──────────────────────────── */
+/* ── Status Dot ─────────────────────────────────────────── */
 .status-dot-online {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
+  width: 6px; height: 6px; border-radius: 50%;
   background-color: #4ade80;
   box-shadow: 0 0 6px #4ade80;
   animation: pulse 2s infinite;
 }
 
 .status-dot-offline {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
+  width: 6px; height: 6px; border-radius: 50%;
   background-color: #f87171;
 }
 
 .status-dot-connecting {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
+  width: 6px; height: 6px; border-radius: 50%;
   background-color: #6b7280;
 }
 
@@ -179,15 +202,8 @@ input[type="range"] {
   transition: border-color 0.15s, color 0.15s;
 }
 
-.btn-reset:hover:not(:disabled) {
-  border-color: #6b7280;
-  color: #f1f5f9;
-}
-
-.btn-reset:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
+.btn-reset:hover:not(:disabled) { border-color: #6b7280; color: #f1f5f9; }
+.btn-reset:disabled { opacity: 0.3; cursor: not-allowed; }
 
 .btn-step {
   background-color: #4ade80;
@@ -203,15 +219,8 @@ input[type="range"] {
   transition: background-color 0.15s;
 }
 
-.btn-step:hover:not(:disabled) {
-  background-color: #86efac;
-}
-
-.btn-step:disabled {
-  background-color: #14532d;
-  color: #4b5563;
-  cursor: not-allowed;
-}
+.btn-step:hover:not(:disabled) { background-color: #86efac; }
+.btn-step:disabled { background-color: #14532d; color: #4b5563; cursor: not-allowed; }
 
 /* ── Form Inputs & Selects ──────────────────────────────── */
 .form-control {
@@ -227,60 +236,36 @@ input[type="range"] {
   transition: border-color 0.2s;
 }
 
-.form-control:focus {
-  border-color: #4ade80;
-}
-
-.form-control::placeholder {
-  color: #4b5563;
-}
+.form-control:focus { border-color: #4ade80; }
+.form-control::placeholder { color: #4b5563; }
 
 /* ── Column Tags ────────────────────────────────────────── */
 .tag-missing {
-  font-family: 'Space Mono', monospace;
-  font-size: 10px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  color: #fca5a5;
-  background-color: rgba(220, 38, 38, 0.1);
-  border: 1px solid rgba(220, 38, 38, 0.25);
+  font-family: 'Space Mono', monospace; font-size: 10px;
+  padding: 2px 8px; border-radius: 4px;
+  color: #fca5a5; background-color: rgba(220,38,38,0.1);
+  border: 1px solid rgba(220,38,38,0.25);
 }
 
 .tag-anomaly {
-  font-family: 'Space Mono', monospace;
-  font-size: 10px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  color: #fcd34d;
-  background-color: rgba(217, 119, 6, 0.1);
-  border: 1px solid rgba(217, 119, 6, 0.25);
+  font-family: 'Space Mono', monospace; font-size: 10px;
+  padding: 2px 8px; border-radius: 4px;
+  color: #fcd34d; background-color: rgba(217,119,6,0.1);
+  border: 1px solid rgba(217,119,6,0.25);
 }
 
 .tag-standardized {
-  font-family: 'Space Mono', monospace;
-  font-size: 10px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  color: #4ade80;
-  background-color: rgba(74, 222, 128, 0.1);
-  border: 1px solid rgba(74, 222, 128, 0.25);
+  font-family: 'Space Mono', monospace; font-size: 10px;
+  padding: 2px 8px; border-radius: 4px;
+  color: #4ade80; background-color: rgba(74,222,128,0.1);
+  border: 1px solid rgba(74,222,128,0.25);
 }
 
 /* ── Responsive ─────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .dashboard-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .task-grid {
-    grid-template-columns: 1fr;
-  }
-
-  main {
-    padding: 16px;
-  }
-
-  header {
-    padding: 12px 16px;
-  }
+  .dashboard-grid { grid-template-columns: 1fr; }
+  .task-grid { grid-template-columns: 1fr; }
+  main { padding: 16px; }
+  header { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
+  #serverUrlInput { width: 140px; }
 }

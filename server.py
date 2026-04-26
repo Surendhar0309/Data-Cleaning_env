@@ -1,17 +1,18 @@
 """
 FastAPI server for Data Cleaning Environment.
 Implements OpenEnv standard endpoints: reset, step, state, baseline, grader, tasks.
-
-KEY ADDITION: CORSMiddleware — required so the GitHub Pages webapp
-can call this API without being blocked by the browser.
+Added: /upload (CSV upload), /download (cleaned CSV export)
 """
 
+import io
+import csv
 import os
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from environment import DataCleaningEnv, CleaningAction, Observation, Reward, State
@@ -34,15 +35,13 @@ app = FastAPI(
 )
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
-# Allows the GitHub Pages webapp (and any other origin) to call this API.
-# For production you can restrict allow_origins to your exact domain, e.g.:
-#   ["https://surendhar0309.github.io"]
+# Allows GitHub Pages webapp and any other origin to call this API.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],          # allow all origins
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],          # GET, POST, OPTIONS, etc.
-    allow_headers=["*"],          # Content-Type, Authorization, etc.
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # ── Environments ──────────────────────────────────────────────────────────────
@@ -76,8 +75,10 @@ class BaselineRequest(BaseModel):
 # ── Helper ────────────────────────────────────────────────────────────────────
 def _get_env(task_name: str) -> DataCleaningEnv:
     if task_name not in environments:
-        raise HTTPException(status_code=400, detail=f"Unknown task: '{task_name}'. "
-                            f"Valid tasks: {list(environments.keys())}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown task: '{task_name}'. Valid tasks: {list(environments.keys())}"
+        )
     return environments[task_name]
 
 
@@ -85,7 +86,7 @@ def _get_env(task_name: str) -> DataCleaningEnv:
 
 @app.get("/")
 async def health_check():
-    """Health check — also used by the webapp to detect if the server is online."""
+    """Health check — used by webapp to detect if server is online."""
     return {
         "status": "healthy",
         "service": "Data Cleaning & Analytics Environment",
@@ -96,7 +97,7 @@ async def health_check():
 
 @app.post("/reset")
 async def reset(request: Optional[ResetRequest] = None):
-    """Reset the environment for a given task and return the initial observation."""
+    """Reset environment for a task and return initial observation."""
     task_name = (request.task_name if request and request.task_name
                  else "easy_sales_cleaning")
     env = _get_env(task_name)
@@ -121,10 +122,9 @@ async def reset(request: Optional[ResetRequest] = None):
 
 @app.post("/step")
 async def step(request: StepRequest):
-    """Execute one cleaning action and return the next observation + reward."""
+    """Execute one cleaning action and return next observation + reward."""
     env = _get_env(request.task_name)
 
-    # Auto-reset if no active episode
     if request.task_name not in active_episodes:
         observation = env.reset()
         active_episodes[request.task_name] = {
@@ -161,7 +161,7 @@ async def step(request: StepRequest):
 @app.post("/state")
 @app.get("/state")
 async def get_state(request: Optional[StateRequest] = None):
-    """Return the full current environment state (dataset + metadata + history)."""
+    """Return full current environment state."""
     task_name = (request.task_name if request and request.task_name
                  else "easy_sales_cleaning")
     env = _get_env(task_name)
@@ -182,7 +182,6 @@ async def grade_episode(request: Optional[GraderRequest] = None):
     efficiency = max(0.0, 1.0 - num_actions / 100)
     raw_score = (final_quality * 0.6) + (efficiency * 0.4)
 
-    # Bonus for reaching target quality
     if final_quality >= env.target_quality:
         raw_score = min(1.0, raw_score + 0.1)
 
@@ -235,7 +234,7 @@ async def list_tasks():
 @app.post("/baseline")
 @app.get("/baseline")
 async def get_baseline(request: Optional[BaselineRequest] = None):
-    """Run the heuristic baseline agent and return scores."""
+    """Run heuristic baseline agent and return scores."""
     tasks_to_run = list(environments.keys())
     if request and request.task_name:
         if request.task_name not in environments:
@@ -275,6 +274,115 @@ async def get_baseline(request: Optional[BaselineRequest] = None):
     return {"status": "success", "baseline_scores": results}
 
 
+# ── NEW: Upload CSV ───────────────────────────────────────────────────────────
+@app.post("/upload")
+async def upload_csv(file: UploadFile = File(...)):
+    """
+    Upload a custom CSV file and register it as a new task called 'custom_upload'.
+    The uploaded dataset is loaded into the environment as-is.
+    Returns the columns found and initial observation.
+    """
+    if not file.filename.endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Only CSV files are supported.")
+
+    try:
+        contents = await file.read()
+        text = contents.decode("utf-8")
+        reader = csv.DictReader(io.StringIO(text))
+        rows = [row for row in reader]
+
+        if not rows:
+            raise HTTPException(status_code=400, detail="CSV file is empty.")
+
+        # Convert numeric strings to numbers where possible
+        parsed_rows = []
+        for row in rows:
+            parsed = {}
+            for k, v in row.items():
+                if v == "" or v is None:
+                    parsed[k] = None
+                else:
+                    try:
+                        parsed[k] = int(v)
+                    except ValueError:
+                        try:
+                            parsed[k] = float(v)
+                        except ValueError:
+                            parsed[k] = v
+            parsed_rows.append(parsed)
+
+        # Build a custom env by injecting the dataset
+        env = DataCleaningEnv(task_difficulty="easy")
+        env.dataset = parsed_rows
+        env.original_dataset = [r.copy() for r in parsed_rows]
+        env.target_quality = 0.80
+        env.current_row_index = 0
+        env.episode_step = 0
+        env.max_steps = 200
+        env.actions_taken = []
+        env.cumulative_reward = 0.0
+        env.handled_columns = set()
+        env.standardized_columns = set()
+        env.anomalies_detected = set()
+
+        environments["custom_upload"] = env
+        active_episodes["custom_upload"] = {
+            "step": 0, "cumulative_reward": 0.0,
+            "actions": [], "observations": [],
+        }
+
+        obs = env._get_observation()
+        obs.last_action_result = f"Uploaded '{file.filename}' — {len(parsed_rows)} rows, {len(parsed_rows[0])} columns"
+
+        logger.info(f"[UPLOAD] file={file.filename}  rows={len(parsed_rows)}  "
+                    f"cols={list(parsed_rows[0].keys())}")
+
+        return {
+            "status": "success",
+            "task_name": "custom_upload",
+            "rows": len(parsed_rows),
+            "columns": list(parsed_rows[0].keys()),
+            "observation": obs.model_dump(),
+        }
+
+    except Exception as e:
+        logger.error(f"[UPLOAD] Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+
+# ── NEW: Download cleaned CSV ─────────────────────────────────────────────────
+@app.get("/download/{task_name}")
+async def download_cleaned_csv(task_name: str):
+    """
+    Download the current (cleaned) dataset as a CSV file.
+    Works for all tasks including 'custom_upload'.
+    """
+    env = _get_env(task_name)
+
+    if not env.dataset:
+        raise HTTPException(status_code=404, detail="No dataset available.")
+
+    output = io.StringIO()
+    fieldnames = list(env.dataset[0].keys())
+    writer = csv.DictWriter(output, fieldnames=fieldnames)
+    writer.writeheader()
+    for row in env.dataset:
+        writer.writerow(row)
+
+    output.seek(0)
+    safe_name = task_name.replace("/", "_")
+
+    logger.info(f"[DOWNLOAD] task={task_name}  rows={len(env.dataset)}")
+
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f'attachment; filename="cleaned_{safe_name}.csv"'
+        },
+    )
+
+
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 @app.on_event("startup")
 async def startup():
@@ -283,7 +391,7 @@ async def startup():
     logger.info("=" * 50)
     for task_name, env in environments.items():
         logger.info(f"  ✓  {task_name}  (target={env.target_quality})")
-    logger.info("Docs available at: http://localhost:7860/docs")
+    logger.info("Docs: http://localhost:7860/docs")
     logger.info("=" * 50)
 
 @app.on_event("shutdown")

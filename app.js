@@ -1,9 +1,10 @@
 /* ═══════════════════════════════════════════════════════
-   Data Cleaning Environment — App Logic
-   Connects to FastAPI server at localhost:7860
+   Data Cleaning Environment — App Logic  v2.0
+   Connects to FastAPI server (configurable URL)
    ═══════════════════════════════════════════════════════ */
 
-const API = 'http://localhost:7860';
+/* ── Server URL: reads from localStorage or defaults to localhost ── */
+let API = localStorage.getItem('dcenv_server_url') || 'http://localhost:7860';
 
 /* ── State ──────────────────────────────────────────────── */
 const state = {
@@ -15,45 +16,52 @@ const state = {
   obs: null,
   log: [],
   loading: false,
+  uploadedTask: null,   // track if a custom CSV was uploaded
 };
 
 /* ── DOM refs ───────────────────────────────────────────── */
 const $ = id => document.getElementById(id);
 
 const ui = {
-  statusDot:      $('statusDot'),
-  statusLabel:    $('statusLabel'),
-  taskCards:      document.querySelectorAll('.task-card'),
-  metricSteps:    $('metricSteps'),
-  metricReward:   $('metricReward'),
-  metricComplete: $('metricComplete'),
-  qualityValue:   $('qualityValue'),
-  qualityFill:    $('qualityFill'),
-  targetMarker:   $('targetMarker'),
-  targetLabel:    $('targetLabel'),
-  colStatusCard:  $('colStatusCard'),
-  missingCols:    $('missingCols'),
-  anomalyCols:    $('anomalyCols'),
+  statusDot:        $('statusDot'),
+  statusLabel:      $('statusLabel'),
+  serverUrlInput:   $('serverUrlInput'),
+  serverUrlSave:    $('serverUrlSave'),
+  taskCards:        document.querySelectorAll('.task-card'),
+  metricSteps:      $('metricSteps'),
+  metricReward:     $('metricReward'),
+  metricComplete:   $('metricComplete'),
+  qualityValue:     $('qualityValue'),
+  qualityFill:      $('qualityFill'),
+  targetMarker:     $('targetMarker'),
+  targetLabel:      $('targetLabel'),
+  colStatusCard:    $('colStatusCard'),
+  missingCols:      $('missingCols'),
+  anomalyCols:      $('anomalyCols'),
   standardizedCols: $('standardizedCols'),
-  lastAction:     $('lastAction'),
-  actionType:     $('actionType'),
-  columnName:     $('columnName'),
-  colSuggestions: $('colSuggestions'),
-  method:         $('method'),
-  methodGroup:    $('methodGroup'),
-  threshold:      $('threshold'),
-  thresholdVal:   $('thresholdVal'),
-  thresholdGroup: $('thresholdGroup'),
-  btnReset:       $('btnReset'),
-  btnStep:        $('btnStep'),
-  gradeBox:       $('gradeBox'),
-  gradeTitle:     $('gradeTitle'),
-  gradeDetail:    $('gradeDetail'),
-  logContainer:   $('logContainer'),
-  logEmpty:       $('logEmpty'),
-  logFooter:      $('logFooter'),
-  logCount:       $('logCount'),
-  logTotal:       $('logTotal'),
+  lastAction:       $('lastAction'),
+  actionType:       $('actionType'),
+  columnName:       $('columnName'),
+  colSuggestions:   $('colSuggestions'),
+  method:           $('method'),
+  methodGroup:      $('methodGroup'),
+  threshold:        $('threshold'),
+  thresholdVal:     $('thresholdVal'),
+  thresholdGroup:   $('thresholdGroup'),
+  btnReset:         $('btnReset'),
+  btnStep:          $('btnStep'),
+  btnDownload:      $('btnDownload'),
+  gradeBox:         $('gradeBox'),
+  gradeTitle:       $('gradeTitle'),
+  gradeDetail:      $('gradeDetail'),
+  logContainer:     $('logContainer'),
+  logEmpty:         $('logEmpty'),
+  logFooter:        $('logFooter'),
+  logCount:         $('logCount'),
+  logTotal:         $('logTotal'),
+  uploadInput:      $('uploadInput'),
+  uploadBtn:        $('uploadBtn'),
+  uploadStatus:     $('uploadStatus'),
 };
 
 /* ── Methods per action type ────────────────────────────── */
@@ -65,18 +73,43 @@ const METHODS = {
   aggregate:      [],
 };
 
+/* ── Server URL config ──────────────────────────────────── */
+function initServerUrl() {
+  if (ui.serverUrlInput) ui.serverUrlInput.value = API;
+}
+
+function saveServerUrl() {
+  const val = ui.serverUrlInput?.value?.trim();
+  if (!val) return;
+  API = val.replace(/\/$/, '');
+  localStorage.setItem('dcenv_server_url', API);
+  setStatus('connecting');
+  checkServer();
+}
+
+function setStatus(state) {
+  if (state === 'online') {
+    ui.statusDot.className = 'w-1.5 h-1.5 rounded-full bg-green-400 shadow-[0_0_6px_#3ddc84]';
+    ui.statusLabel.textContent = 'server online';
+  } else if (state === 'offline') {
+    ui.statusDot.className = 'w-1.5 h-1.5 rounded-full bg-red-400';
+    ui.statusLabel.textContent = 'server offline';
+  } else {
+    ui.statusDot.className = 'w-1.5 h-1.5 rounded-full bg-gray-500 animate-pulse';
+    ui.statusLabel.textContent = 'connecting...';
+  }
+}
+
 /* ── Server health check ────────────────────────────────── */
 async function checkServer() {
   try {
-    const r = await fetch(`${API}/`, { signal: AbortSignal.timeout(3000) });
+    const r = await fetch(`${API}/`, { signal: AbortSignal.timeout(4000) });
     if (r.ok) {
-      ui.statusDot.className = 'w-1.5 h-1.5 rounded-full bg-green-400 shadow-[0_0_6px_#3ddc84]';
-      ui.statusLabel.textContent = 'server online';
+      setStatus('online');
       return true;
     }
   } catch {}
-  ui.statusDot.className = 'w-1.5 h-1.5 rounded-full bg-red-400';
-  ui.statusLabel.textContent = 'server offline';
+  setStatus('offline');
   return false;
 }
 
@@ -93,6 +126,7 @@ async function handleReset() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ task_name: state.task }),
     });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const d = await r.json();
     const obs = d.observation;
 
@@ -110,9 +144,10 @@ async function handleReset() {
 
     ui.btnReset.textContent = 'Reset';
     ui.btnStep.disabled = false;
+    ui.btnDownload.disabled = false;
 
   } catch (e) {
-    alert('Could not connect to server. Make sure python server.py is running.');
+    showError('Could not connect to server.\n\n1. Make sure python server.py is running\n2. Update the Server URL above to match your server address');
   }
 
   state.loading = false;
@@ -139,6 +174,7 @@ async function handleStep() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ task_name: state.task, action }),
     });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const d = await r.json();
 
     const reward = d.reward?.immediate_reward ?? 0;
@@ -190,6 +226,111 @@ async function handleGrade() {
   }
 }
 
+/* ── Upload CSV ─────────────────────────────────────────── */
+async function handleUpload() {
+  const file = ui.uploadInput.files[0];
+  if (!file) {
+    showUploadStatus('Please select a CSV file first.', 'error');
+    return;
+  }
+  if (!file.name.endsWith('.csv')) {
+    showUploadStatus('Only .csv files are supported.', 'error');
+    return;
+  }
+
+  showUploadStatus('Uploading...', 'info');
+  ui.uploadBtn.disabled = true;
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const r = await fetch(`${API}/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!r.ok) {
+      const err = await r.json();
+      throw new Error(err.detail || `HTTP ${r.status}`);
+    }
+    const d = await r.json();
+
+    // Register as active task
+    state.task = 'custom_upload';
+    state.target = 0.80;
+    state.uploadedTask = d;
+    state.obs = d.observation;
+    state.running = true;
+    state.stepNum = 0;
+    state.cumReward = 0;
+    state.log = [];
+
+    // Deselect all preset task cards
+    document.querySelectorAll('.task-card').forEach(c => {
+      c.classList.remove('bg-gray-800');
+      const bar = c.querySelector('.task-bar');
+      if (bar) bar.style.background = 'transparent';
+    });
+
+    // Update UI
+    $('uploadTaskBadge').textContent = `📄 ${file.name} (${d.rows} rows, ${d.columns.length} cols)`;
+    $('uploadTaskBadge').classList.remove('hidden');
+
+    renderMetrics();
+    renderQuality(d.observation);
+    renderColumnStatus(d.observation);
+    updateSuggestions(d.observation);
+    renderLog();
+
+    ui.btnReset.textContent = 'Reset';
+    ui.btnStep.disabled = false;
+    ui.btnDownload.disabled = false;
+
+    showUploadStatus(`✓ Loaded: ${d.rows} rows · ${d.columns.length} columns`, 'success');
+    hideGrade();
+
+  } catch (e) {
+    showUploadStatus(`Upload failed: ${e.message}`, 'error');
+  }
+
+  ui.uploadBtn.disabled = false;
+}
+
+/* ── Download cleaned CSV ───────────────────────────────── */
+async function handleDownload() {
+  if (!state.task) return;
+  try {
+    const url = `${API}/download/${encodeURIComponent(state.task)}`;
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+
+    const blob = await r.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `cleaned_${state.task}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+  } catch (e) {
+    showError('Download failed: ' + e.message);
+  }
+}
+
+/* ── Status helpers ─────────────────────────────────────── */
+function showUploadStatus(msg, type) {
+  if (!ui.uploadStatus) return;
+  ui.uploadStatus.textContent = msg;
+  ui.uploadStatus.className = `mono text-[10px] mt-1.5 ` +
+    (type === 'error' ? 'text-red-400' :
+     type === 'success' ? 'text-green-400' : 'text-gray-400');
+  ui.uploadStatus.classList.remove('hidden');
+}
+
+function showError(msg) {
+  alert(msg);
+}
+
 /* ── Renderers ──────────────────────────────────────────── */
 function renderMetrics() {
   ui.metricSteps.textContent    = state.stepNum;
@@ -209,7 +350,6 @@ function renderQuality(obs) {
   ui.targetMarker.style.left    = tpct + '%';
   ui.targetLabel.textContent    = `target ${tpct.toFixed(0)}%`;
 
-  // colour shift: near-target = amber, above = green
   if (pct >= tpct) {
     ui.qualityFill.className = 'quality-fill h-full rounded bg-gradient-to-r from-green-900 to-green-400';
   } else {
@@ -247,7 +387,6 @@ function renderColumnStatus(obs) {
 
 function renderLog() {
   ui.logEmpty.style.display = state.log.length ? 'none' : 'block';
-
   ui.logContainer.querySelectorAll('.log-entry').forEach(e => e.remove());
 
   state.log.forEach(entry => {
@@ -350,14 +489,12 @@ function updateActionControls() {
 const barColors = { easy: '#3ddc84', medium: '#f5a623', hard: '#e0533a' };
 
 function selectTask(card) {
-  // Reset bar colors on all cards
-  ui.taskCards.forEach(c => {
+  document.querySelectorAll('.task-card').forEach(c => {
     const bar = c.querySelector('.task-bar');
     if (bar) bar.style.background = 'transparent';
     c.classList.remove('bg-gray-800');
   });
 
-  // Highlight selected
   const bar = card.querySelector('.task-bar');
   if (bar) bar.style.background = barColors[card.dataset.difficulty] || '#3ddc84';
   card.classList.add('bg-gray-800');
@@ -369,12 +506,17 @@ function selectTask(card) {
   state.cumReward = 0;
   state.obs = null;
   state.log = [];
+  state.uploadedTask = null;
+
+  const badge = $('uploadTaskBadge');
+  if (badge) badge.classList.add('hidden');
 
   renderMetrics();
   renderLog();
   ui.colStatusCard.classList.add('hidden');
   ui.btnReset.textContent = 'Start Episode';
   ui.btnStep.disabled = true;
+  ui.btnDownload.disabled = true;
   hideGrade();
 
   ui.targetMarker.style.left  = (state.target * 100) + '%';
@@ -386,16 +528,28 @@ function selectTask(card) {
 /* ── Event listeners ────────────────────────────────────── */
 ui.btnReset.addEventListener('click', handleReset);
 ui.btnStep.addEventListener('click', handleStep);
+ui.btnDownload.addEventListener('click', handleDownload);
 ui.actionType.addEventListener('change', updateActionControls);
 ui.threshold.addEventListener('input', () => {
   ui.thresholdVal.textContent = ui.threshold.value;
 });
 ui.taskCards.forEach(card => card.addEventListener('click', () => selectTask(card)));
 
+if (ui.serverUrlSave) ui.serverUrlSave.addEventListener('click', saveServerUrl);
+if (ui.uploadBtn) ui.uploadBtn.addEventListener('click', handleUpload);
+if (ui.uploadInput) {
+  ui.uploadInput.addEventListener('change', () => {
+    const f = ui.uploadInput.files[0];
+    if (f) showUploadStatus(`Selected: ${f.name}`, 'info');
+  });
+}
+
 /* ── Init ───────────────────────────────────────────────── */
 (async function init() {
+  initServerUrl();
   updateActionControls();
   ui.targetMarker.style.left = (state.target * 100) + '%';
+  setStatus('connecting');
   await checkServer();
   setInterval(checkServer, 30000);
 })();
