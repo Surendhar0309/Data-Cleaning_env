@@ -1,0 +1,286 @@
+/* ═══════════════════════════════════════════════════════
+   Data Cleaning Environment — Custom Styles
+   Used alongside Tailwind CSS (loaded via CDN)
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Fonts ──────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+/* ── Base ───────────────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background-color: #030712;
+  color: #f1f5f9;
+  min-height: 100vh;
+}
+
+.mono {
+  font-family: 'Space Mono', monospace;
+}
+
+/* ── Scrollbar ──────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #374151;
+  border-radius: 2px;
+}
+
+/* ── Select Dropdown Arrow ──────────────────────────────── */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b7280'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+  cursor: pointer;
+}
+
+select option {
+  background-color: #1f2937;
+  color: #f1f5f9;
+}
+
+/* ── Range Slider ───────────────────────────────────────── */
+input[type="range"] {
+  accent-color: #4ade80;
+  cursor: pointer;
+  width: 100%;
+}
+
+/* ── Quality Bar Animation ──────────────────────────────── */
+.quality-fill {
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 100%;
+  border-radius: 3px;
+}
+
+.quality-fill.good {
+  background: linear-gradient(90deg, #14532d, #4ade80);
+}
+
+.quality-fill.warn {
+  background: linear-gradient(90deg, #713f12, #fbbf24);
+}
+
+/* ── Task Card Top Bar ──────────────────────────────────── */
+.task-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 12px 12px 0 0;
+  transition: background 0.2s ease;
+}
+
+/* ── Task Card Hover ────────────────────────────────────── */
+.task-card {
+  position: relative;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  overflow: hidden;
+}
+
+.task-card:hover {
+  background-color: #1f2937;
+}
+
+.task-card.selected {
+  background-color: #1f2937;
+  border-color: #374151;
+}
+
+/* ── Log Entry Animation ────────────────────────────────── */
+.log-entry {
+  animation: fadeSlideIn 0.2s ease forwards;
+  border-bottom: 1px solid #1f2937;
+  padding: 8px 0;
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Status Dot Pulse (online) ──────────────────────────── */
+.status-dot-online {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #4ade80;
+  box-shadow: 0 0 6px #4ade80;
+  animation: pulse 2s infinite;
+}
+
+.status-dot-offline {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #f87171;
+}
+
+.status-dot-connecting {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #6b7280;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+/* ── Grade Box ──────────────────────────────────────────── */
+.grade-pass {
+  background-color: rgba(20, 83, 45, 0.15);
+  border: 1px solid rgba(74, 222, 128, 0.25);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.grade-fail {
+  background-color: rgba(127, 29, 29, 0.15);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+/* ── Buttons ────────────────────────────────────────────── */
+.btn-reset {
+  background-color: #1f2937;
+  border: 1px solid #374151;
+  color: #9ca3af;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.btn-reset:hover:not(:disabled) {
+  border-color: #6b7280;
+  color: #f1f5f9;
+}
+
+.btn-reset:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.btn-step {
+  background-color: #4ade80;
+  color: #052e16;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.btn-step:hover:not(:disabled) {
+  background-color: #86efac;
+}
+
+.btn-step:disabled {
+  background-color: #14532d;
+  color: #4b5563;
+  cursor: not-allowed;
+}
+
+/* ── Form Inputs & Selects ──────────────────────────────── */
+.form-control {
+  width: 100%;
+  background-color: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  color: #f1f5f9;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  padding: 7px 10px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.form-control:focus {
+  border-color: #4ade80;
+}
+
+.form-control::placeholder {
+  color: #4b5563;
+}
+
+/* ── Column Tags ────────────────────────────────────────── */
+.tag-missing {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: #fca5a5;
+  background-color: rgba(220, 38, 38, 0.1);
+  border: 1px solid rgba(220, 38, 38, 0.25);
+}
+
+.tag-anomaly {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: #fcd34d;
+  background-color: rgba(217, 119, 6, 0.1);
+  border: 1px solid rgba(217, 119, 6, 0.25);
+}
+
+.tag-standardized {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: #4ade80;
+  background-color: rgba(74, 222, 128, 0.1);
+  border: 1px solid rgba(74, 222, 128, 0.25);
+}
+
+/* ── Responsive ─────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .task-grid {
+    grid-template-columns: 1fr;
+  }
+
+  main {
+    padding: 16px;
+  }
+
+  header {
+    padding: 12px 16px;
+  }
+}
