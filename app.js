@@ -2,8 +2,7 @@
    Data Cleaning Environment — app.js
    All event listeners wired in JS — no inline onclick
    ═══════════════════════════════════════════════════════ */
-
-let API = 'http://localhost:7860';
+let API = 'https://surendhar0309-data-cleaning-env.hf.space';
 
 /* ── App state ───────────────────────────────────────────── */
 const state = {
