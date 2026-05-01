@@ -1,285 +1,572 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Data Cleaning Environment</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="style.css" />
-  <script>
-    tailwind.config = {
-      theme: { extend: { fontFamily: { mono:['Space Mono','monospace'], sans:['DM Sans','sans-serif'] } } }
-    }
-  </script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Data Cleaning Environment</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#030712;color:#f1f5f9;min-height:100vh}
+.mono{font-family:'Space Mono',monospace}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:#374151;border-radius:2px}
+
+/* layout */
+header{position:sticky;top:0;z-index:20;background:#0a0f1a;border-bottom:1px solid #1e293b;padding:12px 24px;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+main{max-width:1000px;margin:0 auto;padding:24px}
+
+/* status dot */
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#4b5563;flex-shrink:0}
+.dot.online{background:#4ade80;box-shadow:0 0 7px #4ade80;animation:blink 2s infinite}
+.dot.offline{background:#f87171}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* nav tabs */
+.tabs{display:flex;gap:2px;padding:3px;background:#070c18;border:1px solid #1e293b;border-radius:10px}
+.nav-tab{font-family:'Space Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.05em;
+  padding:6px 16px;border-radius:7px;border:none;cursor:pointer;background:transparent;
+  color:#6b7280;transition:all .15s}
+.nav-tab:hover{color:#d1d5db}
+.nav-tab.active{background:#1f2937;color:#f1f5f9}
+
+/* server */
+.srv-input{font-family:'Space Mono',monospace;font-size:11px;width:210px;background:#1e293b;
+  border:1px solid #334155;border-radius:8px;padding:6px 12px;color:#cbd5e1;outline:none;transition:border-color .2s}
+.srv-input:focus{border-color:#4ade80}
+.btn-connect{font-family:'Space Mono',monospace;font-size:10px;font-weight:700;padding:7px 14px;
+  border-radius:8px;background:#1e293b;border:1px solid #334155;color:#94a3b8;cursor:pointer;transition:all .15s}
+.btn-connect:hover{border-color:#4ade80;color:#4ade80}
+
+/* task cards */
+.task-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:10px 0 20px}
+.task-card{position:relative;background:#0f172a;border:1px solid #1e293b;border-radius:12px;
+  padding:14px;overflow:hidden;cursor:pointer;transition:all .15s;user-select:none}
+.task-card:hover{background:#1e293b;border-color:#334155}
+.task-card.active{background:#1a2332;border-color:#2d4a6b}
+.task-bar{position:absolute;top:0;left:0;right:0;height:3px;border-radius:12px 12px 0 0}
+.badge{font-family:'Space Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.1em;padding:2px 7px;border-radius:4px}
+.be{color:#4ade80;background:rgba(74,222,128,.12)}
+.bm{color:#fbbf24;background:rgba(251,191,36,.12)}
+.bh{color:#f87171;background:rgba(248,113,113,.12)}
+
+/* error */
+.err-bar{display:none;align-items:flex-start;gap:12px;padding:12px 16px;border-radius:12px;
+  margin-bottom:16px;background:rgba(127,29,29,.2);border:1px solid rgba(248,113,113,.3)}
+
+/* dashboard */
+.dash{display:grid;grid-template-columns:340px 1fr;gap:12px;align-items:start}
+.left-col{display:flex;flex-direction:column;gap:12px}
+.card{background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:16px}
+.sec-lbl{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.15em;color:#475569;display:block;margin-bottom:12px}
+
+/* metrics */
+.met-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.met{background:#070c18;border:1px solid #1e293b;border-radius:8px;padding:10px;text-align:center}
+.met-v{font-family:'Space Mono',monospace;font-size:20px;font-weight:700;line-height:1;margin-bottom:4px}
+.met-k{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.1em;color:#475569}
+
+/* quality */
+.q-track{position:relative;height:8px;background:#070c18;border:1px solid #1e293b;border-radius:4px;margin-bottom:4px;overflow:visible}
+.q-fill{height:100%;border-radius:4px;transition:width .6s cubic-bezier(.4,0,.2,1);width:0%}
+.q-good{background:linear-gradient(90deg,#14532d,#4ade80)}
+.q-warn{background:linear-gradient(90deg,#713f12,#fbbf24)}
+.q-pin{position:absolute;top:-3px;width:2px;height:14px;background:#64748b;border-radius:1px;transform:translateX(-50%)}
+.q-lbls{display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:9px;color:#475569;margin-top:2px}
+
+/* col tags */
+.tag{font-family:'Space Mono',monospace;font-size:10px;padding:2px 8px;border-radius:4px;display:inline-block;margin:2px}
+.tm{color:#fca5a5;background:rgba(220,38,38,.12);border:1px solid rgba(220,38,38,.25)}
+.ta{color:#fcd34d;background:rgba(217,119,6,.12);border:1px solid rgba(217,119,6,.25)}
+.ts{color:#4ade80;background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.25)}
+.grp-lbl{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.1em;color:#475569;display:block;margin-bottom:5px}
+
+/* form */
+.fl{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.12em;color:#475569;display:block;margin-bottom:6px}
+.fc{width:100%;background:#070c18;border:1px solid #1e293b;border-radius:6px;color:#e2e8f0;
+  font-family:'Space Mono',monospace;font-size:11px;padding:7px 10px;outline:none;transition:border-color .2s}
+.fc:focus{border-color:#4ade80}
+.fc::placeholder{color:#334155}
+select.fc{appearance:none;-webkit-appearance:none;cursor:pointer;padding-right:28px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b7280'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center}
+select.fc option{background:#1e293b}
+input[type=range]{accent-color:#4ade80;width:100%;cursor:pointer}
+
+/* buttons */
+.btn-r{background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:8px;padding:10px 14px;
+  font-family:'Space Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s}
+.btn-r:hover:not(:disabled){border-color:#64748b;color:#f1f5f9}
+.btn-r:disabled{opacity:.35;cursor:not-allowed}
+.btn-s{background:#4ade80;color:#052e16;border:none;border-radius:8px;padding:10px 14px;
+  font-family:'Space Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;transition:background .15s}
+.btn-s:hover:not(:disabled){background:#86efac}
+.btn-s:disabled{background:#14532d;color:#4b5563;cursor:not-allowed}
+
+/* grade */
+.g-pass{padding:12px 14px;border-radius:10px;background:rgba(20,83,45,.18);border:1px solid rgba(74,222,128,.28)}
+.g-fail{padding:12px 14px;border-radius:10px;background:rgba(127,29,29,.18);border:1px solid rgba(248,113,113,.28)}
+
+/* log */
+.log-panel{display:flex;flex-direction:column;min-height:500px;max-height:700px}
+.log-scroll{flex:1;overflow-y:auto;min-height:0}
+.log-empty{text-align:center;color:#475569;font-size:12px;font-style:italic;padding:60px 0}
+.log-entry{display:grid;grid-template-columns:28px 1fr 58px;gap:8px;padding:8px 0;
+  border-bottom:1px solid #1e293b;align-items:start;animation:fu .2s ease}
+@keyframes fu{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.log-foot{display:none;justify-content:space-between;padding-top:10px;margin-top:8px;
+  border-top:1px solid #1e293b;font-family:'Space Mono',monospace;font-size:10px;color:#475569}
+
+/* upload */
+.drop-zone{border:2px dashed #334155;border-radius:18px;padding:56px 24px;text-align:center;cursor:pointer;transition:all .2s}
+.drop-zone:hover,.drop-zone.drag-over{border-color:#4ade80;background:rgba(74,222,128,.04)}
+.stats-g{display:none;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px}
+.analysis-g{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.csc{background:#070c18;border:1px solid #1e293b;border-radius:8px;padding:10px 12px}
+.csb{background:#030712;border-radius:3px;height:4px;margin-top:6px;overflow:hidden}
+.csbf{height:100%;border-radius:3px;transition:width .5s}
+
+/* preview table */
+#pt th{font-family:'Space Mono',monospace;font-size:10px;text-align:left;padding:6px 10px;color:#64748b;white-space:nowrap;border-bottom:1px solid #1e293b}
+#pt td{font-family:'Space Mono',monospace;font-size:10px;padding:5px 10px;color:#cbd5e1;border-top:1px solid #0f172a;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis}
+#pt td.nc{color:#f87171;font-style:italic}
+#pt tr:hover td{background:#1a2332}
+
+@media(max-width:768px){
+  .dash{grid-template-columns:1fr}
+  .task-grid{grid-template-columns:1fr}
+  .stats-g{grid-template-columns:repeat(2,1fr)}
+  .analysis-g{grid-template-columns:1fr}
+  header{gap:8px}
+}
+</style>
 </head>
-<body class="bg-gray-950 text-gray-100 min-h-screen">
+<body>
 
-  <!-- Header -->
-  <header class="sticky top-0 z-20 flex items-center justify-between px-6 py-3 bg-gray-900 border-b border-gray-800 gap-4 flex-wrap">
-    <div class="flex items-center gap-4">
-      <div class="flex items-center gap-2">
-        <span class="text-green-400 text-lg">⬡</span>
-        <span class="mono text-sm font-bold">DataClean<span class="text-green-400">ENV</span></span>
+<header>
+  <div style="display:flex;align-items:center;gap:14px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="color:#4ade80;font-size:18px">⬡</span>
+      <span class="mono" style="font-size:14px;font-weight:700">DataClean<span style="color:#4ade80">ENV</span></span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;background:#1e293b;border:1px solid #334155">
+      <span id="sDot" class="dot offline"></span>
+      <span id="sLbl" class="mono" style="font-size:10px;color:#94a3b8">offline</span>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <span class="mono" style="font-size:10px;color:#475569">SERVER</span>
+    <input id="srvUrl" class="srv-input" type="text" value="http://localhost:7860"/>
+    <button id="btnConn" class="btn-connect">Connect</button>
+  </div>
+  <div class="tabs">
+    <button id="tEnv"    class="nav-tab active">ENVIRONMENT</button>
+    <button id="tUpload" class="nav-tab">FILE UPLOAD</button>
+  </div>
+</header>
+
+<main>
+
+<!-- ══ ENVIRONMENT ══ -->
+<div id="pEnv">
+  <span class="mono" style="font-size:9px;letter-spacing:.15em;color:#475569">SELECT TASK</span>
+  <div class="task-grid">
+    <div class="task-card active" data-task="easy_sales_cleaning" data-target="0.85" data-diff="easy">
+      <div class="task-bar" style="background:#4ade80"></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <span class="badge be">EASY</span><span class="mono" style="font-size:10px;color:#475569">30 rows</span>
       </div>
-      <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-800 border border-gray-700">
-        <span id="statusDot" class="status-dot-connecting"></span>
-        <span id="statusLabel" class="mono text-[10px] text-gray-400">offline</span>
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px">Sales Cleaning</div>
+      <div style="font-size:11px;color:#64748b;line-height:1.4;margin-bottom:8px">Missing amounts, quantities & status inconsistencies</div>
+      <div class="mono" style="font-size:10px;color:#475569">Target: 85%</div>
+    </div>
+    <div class="task-card" data-task="medium_customer_cleaning" data-target="0.80" data-diff="medium">
+      <div class="task-bar"></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <span class="badge bm">MEDIUM</span><span class="mono" style="font-size:10px;color:#475569">40 rows</span>
       </div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px">Customer Cleaning</div>
+      <div style="font-size:11px;color:#64748b;line-height:1.4;margin-bottom:8px">Invalid ages, name formats & missing LTV values</div>
+      <div class="mono" style="font-size:10px;color:#475569">Target: 80%</div>
+    </div>
+    <div class="task-card" data-task="hard_survey_analytics" data-target="0.75" data-diff="hard">
+      <div class="task-bar"></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <span class="badge bh">HARD</span><span class="mono" style="font-size:10px;color:#475569">50 rows</span>
+      </div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px">Survey Analytics</div>
+      <div style="font-size:11px;color:#64748b;line-height:1.4;margin-bottom:8px">Anomalous NPS scores, invalid ranges & mixed devices</div>
+      <div class="mono" style="font-size:10px;color:#475569">Target: 75%</div>
+    </div>
+  </div>
+
+  <div id="errBar" class="err-bar">
+    <span style="color:#f87171;font-size:18px;flex-shrink:0">⚠</span>
+    <div style="flex:1">
+      <div style="font-size:13px;font-weight:600;color:#fca5a5;margin-bottom:2px">Server not reachable</div>
+      <div id="errMsg" class="mono" style="font-size:10px;color:#f87171">Update SERVER URL and click Connect.</div>
+    </div>
+    <button id="btnCloseErr" style="background:none;border:none;color:#f87171;font-size:20px;cursor:pointer;line-height:1">×</button>
+  </div>
+
+  <div class="dash">
+    <div class="left-col">
+
+      <div class="card">
+        <span class="sec-lbl">EPISODE STATE</span>
+        <div class="met-grid">
+          <div class="met"><div id="mS" class="met-v">0</div><div class="met-k">steps</div></div>
+          <div class="met"><div id="mR" class="met-v">0.00</div><div class="met-k">reward</div></div>
+          <div class="met"><div id="mC" class="met-v">0%</div><div class="met-k">complete</div></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span class="mono" style="font-size:9px;letter-spacing:.15em;color:#475569">DATA QUALITY</span>
+          <span id="qV" class="mono" style="font-size:13px;font-weight:700;color:#4ade80">—</span>
+        </div>
+        <div class="q-track"><div id="qF" class="q-fill q-good"></div><div id="qP" class="q-pin" style="left:85%"></div></div>
+        <div class="q-lbls"><span>0%</span><span id="qL">target 85%</span><span>100%</span></div>
+      </div>
+
+      <div id="colCard" class="card" style="display:none">
+        <span class="sec-lbl">COLUMN STATUS</span>
+        <div id="cMiss"></div><div id="cAnom"></div><div id="cStd"></div>
+        <div id="lastAct" class="mono" style="font-size:10px;color:#64748b;font-style:italic;padding-top:8px;margin-top:8px;border-top:1px solid #1e293b;display:none"></div>
+      </div>
+
+      <div class="card">
+        <span class="sec-lbl">ACTION COMPOSER</span>
+        <div style="margin-bottom:10px">
+          <label class="fl">ACTION TYPE</label>
+          <select id="aType" class="fc">
+            <option value="handle_missing">handle_missing</option>
+            <option value="detect_anomaly">detect_anomaly</option>
+            <option value="standardize">standardize</option>
+            <option value="validate">validate</option>
+            <option value="aggregate">aggregate</option>
+          </select>
+        </div>
+        <div style="margin-bottom:10px">
+          <label class="fl">COLUMN NAME</label>
+          <input id="colIn" type="text" list="colSugg" placeholder="e.g. amount, age, status" class="fc"/>
+          <datalist id="colSugg"></datalist>
+        </div>
+        <div id="mGrp" style="margin-bottom:10px">
+          <label class="fl">METHOD</label>
+          <select id="mSel" class="fc">
+            <option value="mean">mean</option><option value="median">median</option>
+            <option value="delete">delete</option><option value="forward_fill">forward_fill</option>
+          </select>
+        </div>
+        <div id="tGrp" style="margin-bottom:10px;display:none">
+          <label class="fl">THRESHOLD (σ): <span id="tVal">2.5</span></label>
+          <input type="range" id="tSlide" min="1" max="5" step="0.1" value="2.5"/>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px">
+        <button id="btnReset" class="btn-r" style="flex:1">Start Episode</button>
+        <button id="btnStep"  class="btn-s" style="flex:2" disabled>Execute Step</button>
+      </div>
+      <div id="grade" style="display:none"></div>
     </div>
 
-    <!-- Server URL -->
-    <div class="flex items-center gap-2">
-      <span class="mono text-[10px] text-gray-600">SERVER</span>
-      <input id="serverUrl" type="text" value="http://localhost:7860"
-        class="mono text-[11px] bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-gray-300 outline-none focus:border-green-500 w-52 transition-colors" />
-      <button onclick="reconnect()"
-        class="mono text-[10px] font-bold px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-gray-300 hover:border-green-500 hover:text-green-400 transition-all">
-        Connect
-      </button>
-    </div>
-
-    <!-- Tabs -->
-    <div class="flex items-center gap-1 bg-gray-800 rounded-lg p-1">
-      <button id="tabEnv"    onclick="switchTab('env')"    class="tab-btn active-tab mono text-[10px] px-3 py-1 rounded-md">ENVIRONMENT</button>
-      <button id="tabUpload" onclick="switchTab('upload')" class="tab-btn mono text-[10px] px-3 py-1 rounded-md">FILE UPLOAD</button>
-    </div>
-  </header>
-
-  <main class="max-w-5xl mx-auto px-6 py-6">
-
-    <!-- ══ TAB: ENVIRONMENT ══ -->
-    <div id="panelEnv">
-
-      <!-- Task cards -->
-      <div class="mb-5">
-        <p class="mono text-[9px] tracking-widest text-gray-600 mb-2.5">SELECT TASK</p>
-        <div class="grid grid-cols-3 gap-3" id="taskGrid">
-
-          <div class="task-card selected rounded-xl bg-gray-900 border border-gray-700 p-3.5 overflow-hidden"
-               data-task="easy_sales_cleaning" data-difficulty="easy" data-target="0.85">
-            <div class="task-bar" style="background:#4ade80"></div>
-            <div class="flex items-center justify-between mb-2">
-              <span class="mono text-[9px] font-bold px-1.5 py-0.5 rounded text-green-400 bg-green-400/10">EASY</span>
-              <span class="mono text-[10px] text-gray-600">30 rows</span>
-            </div>
-            <div class="text-sm font-semibold mb-1">Sales Cleaning</div>
-            <div class="text-[11px] text-gray-400 leading-snug mb-2">Missing amounts, quantities & status inconsistencies</div>
-            <div class="mono text-[10px] text-gray-600">Target: 85%</div>
-          </div>
-
-          <div class="task-card rounded-xl bg-gray-900 border border-gray-700 p-3.5 overflow-hidden"
-               data-task="medium_customer_cleaning" data-difficulty="medium" data-target="0.80">
-            <div class="task-bar"></div>
-            <div class="flex items-center justify-between mb-2">
-              <span class="mono text-[9px] font-bold px-1.5 py-0.5 rounded text-amber-400 bg-amber-400/10">MEDIUM</span>
-              <span class="mono text-[10px] text-gray-600">40 rows</span>
-            </div>
-            <div class="text-sm font-semibold mb-1">Customer Cleaning</div>
-            <div class="text-[11px] text-gray-400 leading-snug mb-2">Invalid ages, name formats & missing LTV values</div>
-            <div class="mono text-[10px] text-gray-600">Target: 80%</div>
-          </div>
-
-          <div class="task-card rounded-xl bg-gray-900 border border-gray-700 p-3.5 overflow-hidden"
-               data-task="hard_survey_analytics" data-difficulty="hard" data-target="0.75">
-            <div class="task-bar"></div>
-            <div class="flex items-center justify-between mb-2">
-              <span class="mono text-[9px] font-bold px-1.5 py-0.5 rounded text-red-400 bg-red-400/10">HARD</span>
-              <span class="mono text-[10px] text-gray-600">50 rows</span>
-            </div>
-            <div class="text-sm font-semibold mb-1">Survey Analytics</div>
-            <div class="text-[11px] text-gray-400 leading-snug mb-2">Anomalous NPS scores, invalid ranges & mixed devices</div>
-            <div class="mono text-[10px] text-gray-600">Target: 75%</div>
-          </div>
-        </div>
+    <div class="card log-panel">
+      <span class="sec-lbl">EPISODE LOG</span>
+      <div id="logScroll" class="log-scroll">
+        <div id="logEmpty" class="log-empty">Start an episode to begin</div>
       </div>
-
-      <!-- Error banner (no more alert popups) -->
-      <div id="errorBanner" class="hidden mb-4 flex items-center gap-3 bg-red-900/20 border border-red-800/40 rounded-xl px-4 py-3">
-        <span class="text-red-400 text-lg flex-shrink-0">⚠</span>
-        <div class="flex-1">
-          <div class="text-sm font-medium text-red-300">Server not reachable</div>
-          <div id="errorMsg" class="mono text-[10px] text-red-500 mt-0.5">Enter your server URL above and click Connect.</div>
-        </div>
-        <button onclick="document.getElementById('errorBanner').classList.add('hidden')" class="text-red-500 hover:text-red-300 text-xl leading-none flex-shrink-0">×</button>
-      </div>
-
-      <!-- Dashboard grid -->
-      <div class="grid gap-3 items-start" style="grid-template-columns:340px 1fr">
-
-        <!-- Left -->
-        <div class="flex flex-col gap-3">
-
-          <!-- Metrics + Quality -->
-          <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
-            <p class="mono text-[9px] tracking-widest text-gray-600 mb-3">EPISODE STATE</p>
-            <div class="grid grid-cols-3 gap-2 mb-4">
-              <div class="bg-gray-800 rounded-lg p-2.5 text-center border border-gray-700">
-                <div id="metricSteps"   class="mono text-xl font-bold leading-none mb-1">0</div>
-                <div class="mono text-[9px] text-gray-500">steps</div>
-              </div>
-              <div class="bg-gray-800 rounded-lg p-2.5 text-center border border-gray-700">
-                <div id="metricReward"  class="mono text-xl font-bold leading-none mb-1">0.00</div>
-                <div class="mono text-[9px] text-gray-500">reward</div>
-              </div>
-              <div class="bg-gray-800 rounded-lg p-2.5 text-center border border-gray-700">
-                <div id="metricComplete" class="mono text-xl font-bold leading-none mb-1">0%</div>
-                <div class="mono text-[9px] text-gray-500">complete</div>
-              </div>
-            </div>
-            <div class="flex justify-between items-center mb-1.5">
-              <span class="mono text-[9px] tracking-widest text-gray-600">DATA QUALITY</span>
-              <span id="qualityValue" class="mono text-sm font-bold text-green-400">—</span>
-            </div>
-            <div class="relative mb-1">
-              <div class="bg-gray-800 rounded h-2 border border-gray-700 overflow-hidden">
-                <div id="qualityFill" class="quality-fill good" style="width:0%"></div>
-              </div>
-              <div id="targetMarker" class="absolute top-[-3px] w-0.5 h-3.5 bg-gray-500 rounded" style="left:85%"></div>
-            </div>
-            <div class="flex justify-between mono text-[9px] text-gray-600">
-              <span>0%</span><span id="targetLabel">target 85%</span><span>100%</span>
-            </div>
-          </div>
-
-          <!-- Column status -->
-          <div id="colStatusCard" class="hidden bg-gray-900 border border-gray-800 rounded-xl p-4">
-            <p class="mono text-[9px] tracking-widest text-gray-600 mb-3">COLUMN STATUS</p>
-            <div id="missingCols"></div>
-            <div id="anomalyCols"></div>
-            <div id="standardizedCols"></div>
-            <div id="lastAction" class="hidden text-[11px] text-gray-400 italic pt-2 mt-1 border-t border-gray-800"></div>
-          </div>
-
-          <!-- Action composer -->
-          <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
-            <p class="mono text-[9px] tracking-widest text-gray-600 mb-3">ACTION COMPOSER</p>
-            <div class="mb-2.5">
-              <label class="mono text-[9px] tracking-widest text-gray-600 block mb-1.5">ACTION TYPE</label>
-              <select id="actionType" class="form-control">
-                <option value="handle_missing">handle_missing</option>
-                <option value="detect_anomaly">detect_anomaly</option>
-                <option value="standardize">standardize</option>
-                <option value="validate">validate</option>
-                <option value="aggregate">aggregate</option>
-              </select>
-            </div>
-            <div class="mb-2.5">
-              <label class="mono text-[9px] tracking-widest text-gray-600 block mb-1.5">COLUMN NAME</label>
-              <input id="columnName" type="text" list="colSuggestions" placeholder="e.g. amount, age, status" class="form-control" />
-              <datalist id="colSuggestions"></datalist>
-            </div>
-            <div id="methodGroup" class="mb-2.5">
-              <label class="mono text-[9px] tracking-widest text-gray-600 block mb-1.5">METHOD</label>
-              <select id="method" class="form-control">
-                <option value="mean">mean</option>
-                <option value="median">median</option>
-                <option value="delete">delete</option>
-                <option value="forward_fill">forward_fill</option>
-              </select>
-            </div>
-            <div id="thresholdGroup" class="mb-2.5 hidden">
-              <label class="mono text-[9px] tracking-widest text-gray-600 block mb-1.5">THRESHOLD (σ): <span id="thresholdVal">2.5</span></label>
-              <input type="range" id="threshold" min="1" max="5" step="0.1" value="2.5" class="w-full" />
-            </div>
-          </div>
-
-          <!-- Controls -->
-          <div class="flex gap-2">
-            <button id="btnReset" class="btn-reset flex-1">Start Episode</button>
-            <button id="btnStep" disabled class="btn-step flex-[2]">Execute Step</button>
-          </div>
-
-          <div id="gradeBox" class="hidden"></div>
-        </div>
-
-        <!-- Log -->
-        <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 flex flex-col" style="min-height:500px;max-height:700px">
-          <p class="mono text-[9px] tracking-widest text-gray-600 mb-3">EPISODE LOG</p>
-          <div id="logContainer" class="flex-1 overflow-y-auto min-h-0">
-            <div id="logEmpty" class="text-center text-gray-600 text-xs italic py-16">Start an episode to begin</div>
-          </div>
-          <div id="logFooter" class="hidden flex justify-between pt-2.5 mt-2 border-t border-gray-800 mono text-[10px] text-gray-600">
-            <span id="logCount">0 actions</span>
-            <span id="logTotal">Σ 0.000</span>
-          </div>
-        </div>
+      <div id="logFoot" class="log-foot">
+        <span id="logCnt">0 actions</span><span id="logTot">Σ 0.000</span>
       </div>
     </div>
+  </div>
+</div>
 
-    <!-- ══ TAB: FILE UPLOAD (100% client-side) ══ -->
-    <div id="panelUpload" class="hidden">
+<!-- ══ FILE UPLOAD ══ -->
+<div id="pUpload" style="display:none">
+  <div id="dropZone" class="drop-zone">
+    <div style="font-size:48px;margin-bottom:12px">📂</div>
+    <p style="font-size:17px;font-weight:600;color:#e2e8f0;margin-bottom:4px">Drop your CSV file here</p>
+    <p style="font-size:13px;color:#64748b;margin-bottom:20px">or click to browse · parsed entirely in your browser</p>
+    <span class="mono" style="font-size:10px;padding:6px 14px;border-radius:20px;border:1px solid #334155;color:#64748b">.csv only · no server required</span>
+    <input type="file" id="fInput" accept=".csv" style="display:none"/>
+  </div>
 
-      <div id="dropZone"
-        class="drop-zone border-2 border-dashed border-gray-700 rounded-2xl p-14 text-center cursor-pointer mb-5"
-        onclick="document.getElementById('fileInput').click()"
-        ondragover="handleDragOver(event)"
-        ondragleave="handleDragLeave(event)"
-        ondrop="handleDrop(event)">
-        <div class="text-5xl mb-3">📂</div>
-        <p class="text-gray-200 font-semibold text-lg mb-1">Drop your CSV file here</p>
-        <p class="text-gray-500 text-sm mb-5">or click to browse · parsed entirely in your browser</p>
-        <span class="mono text-[10px] px-3 py-1.5 rounded-full border border-gray-700 text-gray-500">.csv only · no server required</span>
-        <input type="file" id="fileInput" accept=".csv" class="hidden" onchange="handleFileSelect(event)" />
-      </div>
-
-      <!-- File bar -->
-      <div id="fileInfoBar" class="hidden bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 flex items-center justify-between mb-4">
-        <div class="flex items-center gap-3">
-          <span class="text-2xl">📄</span>
-          <div>
-            <div id="fileName" class="text-sm font-semibold text-gray-200"></div>
-            <div id="fileSize" class="mono text-[10px] text-gray-500 mt-0.5"></div>
-          </div>
-        </div>
-        <div class="flex items-center gap-2">
-          <button onclick="downloadCleaned()" id="btnDownload" class="hidden mono text-[10px] font-bold px-3 py-1.5 rounded-lg bg-green-900/30 border border-green-800/50 text-green-400 hover:bg-green-900/60 transition-all">
-            ↓ Download Cleaned CSV
-          </button>
-          <button onclick="clearFile()" class="mono text-[10px] text-gray-500 hover:text-red-400 px-2 py-1 border border-gray-700 rounded hover:border-red-800 transition-colors">✕ clear</button>
-        </div>
-      </div>
-
-      <!-- Stats -->
-      <div id="statsRow" class="hidden grid grid-cols-4 gap-3 mb-4">
-        <div class="bg-gray-900 border border-gray-800 rounded-xl p-3.5 text-center">
-          <div id="statRows"    class="mono text-2xl font-bold mb-1">—</div>
-          <div class="mono text-[9px] tracking-wider text-gray-600">ROWS</div>
-        </div>
-        <div class="bg-gray-900 border border-gray-800 rounded-xl p-3.5 text-center">
-          <div id="statCols"    class="mono text-2xl font-bold mb-1">—</div>
-          <div class="mono text-[9px] tracking-wider text-gray-600">COLUMNS</div>
-        </div>
-        <div class="bg-gray-900 border border-gray-800 rounded-xl p-3.5 text-center">
-          <div id="statMissing" class="mono text-2xl font-bold text-red-400 mb-1">—</div>
-          <div class="mono text-[9px] tracking-wider text-gray-600">MISSING CELLS</div>
-        </div>
-        <div class="bg-gray-900 border border-gray-800 rounded-xl p-3.5 text-center">
-          <div id="statQuality" class="mono text-2xl font-bold text-green-400 mb-1">—</div>
-          <div class="mono text-[9px] tracking-wider text-gray-600">QUALITY SCORE</div>
-        </div>
-      </div>
-
-      <!-- Column analysis -->
-      <div id="colAnalysis" class="hidden bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4">
-        <p class="mono text-[9px] tracking-widest text-gray-600 mb-3">COLUMN ANALYSIS</p>
-        <div id="colAnalysisGrid" class="grid grid-cols-2 gap-2.5"></div>
-      </div>
-
-      <!-- Preview -->
-      <div id="previewSection" class="hidden bg-gray-900 border border-gray-800 rounded-xl p-4">
-        <div class="flex items-center justify-between mb-3">
-          <p class="mono text-[9px] tracking-widest text-gray-600">DATA PREVIEW</p>
-          <span id="previewNote" class="mono text-[9px] text-gray-600"></span>
-        </div>
-        <div class="overflow-x-auto">
-          <table id="previewTable" class="w-full text-[11px]">
-            <thead id="previewHead"></thead>
-            <tbody id="previewBody"></tbody>
-          </table>
-        </div>
-      </div>
+  <div id="fBar" class="card" style="display:none;flex-direction:row;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <span style="font-size:24px">📄</span>
+      <div><div id="fName" style="font-size:13px;font-weight:600;color:#e2e8f0"></div>
+           <div id="fSize" class="mono" style="font-size:10px;color:#64748b;margin-top:2px"></div></div>
     </div>
-  </main>
-  <script src="app.js"></script>
+    <div style="display:flex;gap:8px">
+      <button id="btnDl" style="display:none;font-family:'Space Mono',monospace;font-size:10px;font-weight:700;
+        padding:6px 12px;border-radius:8px;background:rgba(20,83,45,.3);border:1px solid rgba(74,222,128,.3);color:#4ade80;cursor:pointer">
+        ↓ Download Cleaned CSV</button>
+      <button id="btnClear" style="font-family:'Space Mono',monospace;font-size:10px;padding:6px 10px;border-radius:6px;
+        background:transparent;border:1px solid #334155;color:#64748b;cursor:pointer">✕ clear</button>
+    </div>
+  </div>
+
+  <div id="stGrid" class="stats-g">
+    <div class="card" style="text-align:center"><div id="stR" class="mono" style="font-size:22px;font-weight:700;margin-bottom:4px">—</div><div class="mono" style="font-size:9px;color:#475569">ROWS</div></div>
+    <div class="card" style="text-align:center"><div id="stC" class="mono" style="font-size:22px;font-weight:700;margin-bottom:4px">—</div><div class="mono" style="font-size:9px;color:#475569">COLUMNS</div></div>
+    <div class="card" style="text-align:center"><div id="stM" class="mono" style="font-size:22px;font-weight:700;margin-bottom:4px;color:#f87171">—</div><div class="mono" style="font-size:9px;color:#475569">MISSING</div></div>
+    <div class="card" style="text-align:center"><div id="stQ" class="mono" style="font-size:22px;font-weight:700;margin-bottom:4px;color:#4ade80">—</div><div class="mono" style="font-size:9px;color:#475569">QUALITY</div></div>
+  </div>
+
+  <div id="colAnal" class="card" style="display:none;margin-bottom:12px">
+    <span class="sec-lbl">COLUMN ANALYSIS</span>
+    <div id="analGrid" class="analysis-g"></div>
+  </div>
+
+  <div id="prevSec" class="card" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <span class="sec-lbl" style="margin:0">DATA PREVIEW</span>
+      <span id="prevNote" class="mono" style="font-size:9px;color:#475569"></span>
+    </div>
+    <div style="overflow-x:auto">
+      <table id="pt" style="width:100%"><thead id="pH"></thead><tbody id="pB"></tbody></table>
+    </div>
+  </div>
+</div>
+
+</main>
+<script>
+/* ══════ STATE ══════ */
+let API = 'https://surendhar4518-data-cleaning-env.hf.space';
+const S={task:'easy_sales_cleaning',target:0.85,running:false,stepNum:0,cumReward:0,obs:null,log:[],loading:false};
+let csvData=[],csvHeaders=[];
+const $=id=>document.getElementById(id);
+
+/* ══════ TABS ══════ */
+function tab(t){
+  $('pEnv').style.display   =t==='env'?'':'none';
+  $('pUpload').style.display=t==='upload'?'':'none';
+  $('tEnv').classList.toggle('active',t==='env');
+  $('tUpload').classList.toggle('active',t==='upload');
+}
+
+/* ══════ SERVER ══════ */
+function reconnect(){
+  API=($('srvUrl').value||'').trim().replace(/\/$/,'')||'http://localhost:7860';
+  ping();
+}
+async function ping(){
+  dot('offline','connecting...');
+  try{
+    const r=await fetch(`${API}/`,{signal:AbortSignal.timeout(5000)});
+    if(r.ok){dot('online','server online');$('errBar').style.display='none';return true;}
+  }catch(e){}
+  dot('offline','server offline');return false;
+}
+function dot(cls,lbl){$('sDot').className='dot '+cls;$('sLbl').textContent=lbl;}
+function showErr(m){$('errBar').style.display='flex';$('errMsg').textContent=m;}
+
+/* ══════ TASK CARDS ══════ */
+const DC={easy:'#4ade80',medium:'#fbbf24',hard:'#f87171'};
+function selTask(card){
+  document.querySelectorAll('.task-card').forEach(c=>{c.classList.remove('active');const b=c.querySelector('.task-bar');if(b)b.style.background='transparent';});
+  card.classList.add('active');
+  const b=card.querySelector('.task-bar');if(b)b.style.background=DC[card.dataset.diff]||'#4ade80';
+  S.task=card.dataset.task;S.target=parseFloat(card.dataset.target);
+  resetEp();
+}
+function resetEp(){
+  S.running=false;S.stepNum=0;S.cumReward=0;S.obs=null;S.log=[];
+  rMetrics();rLog();
+  $('colCard').style.display='none';$('grade').style.display='none';
+  $('btnReset').textContent='Start Episode';$('btnStep').disabled=true;
+  const p=S.target*100;
+  $('qP').style.left=p+'%';$('qL').textContent='target '+p.toFixed(0)+'%';
+  $('qV').textContent='—';$('qF').style.width='0%';
+}
+
+/* ══════ ACTION CONTROLS ══════ */
+const METH={handle_missing:['mean','median','delete','forward_fill'],standardize:['lowercase','uppercase','title_case','minmax','zscore'],detect_anomaly:[],validate:[],aggregate:[]};
+function updateCtrl(){
+  const t=$('aType').value,m=METH[t]||[];
+  $('mGrp').style.display=m.length?'':'none';
+  if(m.length)$('mSel').innerHTML=m.map(x=>`<option value="${x}">${x}</option>`).join('');
+  $('tGrp').style.display=t==='detect_anomaly'?'':'none';
+}
+
+/* ══════ EPISODE ══════ */
+async function handleReset(){
+  if(S.loading)return;S.loading=true;setLoad(true);$('errBar').style.display='none';$('grade').style.display='none';
+  if(!await ping()){showErr(`Cannot reach ${API} — update SERVER URL and click Connect.`);S.loading=false;setLoad(false);return;}
+  try{
+    const r=await fetch(`${API}/reset`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task_name:S.task})});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    S.obs=d.observation;S.running=true;S.stepNum=0;S.cumReward=0;S.log=[];
+    rMetrics();rQual(d.observation);rColStatus(d.observation);rLog();rSugg(d.observation);
+    $('btnReset').textContent='Reset';$('btnStep').disabled=false;
+  }catch(e){showErr('Reset failed: '+e.message);}
+  S.loading=false;setLoad(false);
+}
+async function handleStep(){
+  if(!S.running||S.loading)return;S.loading=true;setLoad(true);
+  const at=$('aType').value,col=($('colIn').value.trim())||S.obs?.missing_columns?.[0]||'amount';
+  const action={action_type:at,column_name:col};
+  if(METH[at]?.length)action.method=$('mSel').value;
+  if(at==='detect_anomaly')action.threshold=parseFloat($('tSlide').value);
+  try{
+    const r=await fetch(`${API}/step`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task_name:S.task,action})});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    const rw=d.reward?.immediate_reward??0;
+    S.stepNum++;S.cumReward=+(S.cumReward+rw).toFixed(4);S.obs=d.observation;
+    S.log.push({step:S.stepNum,at,col,meth:action.method||null,rw,res:d.observation?.last_action_result||''});
+    rMetrics();rQual(d.observation);rColStatus(d.observation);rLog();rSugg(d.observation);
+    if(d.done){S.running=false;$('btnStep').disabled=true;await handleGrade();}
+  }catch(e){showErr('Step failed: '+e.message);}
+  S.loading=false;setLoad(false);
+}
+async function handleGrade(){
+  try{
+    const r=await fetch(`${API}/grader`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task_name:S.task,episode_data:{}})});
+    const d=await r.json();
+    const sc=d.score||0,ql=d.details?.quality_score||0,pass=sc>=S.target;
+    const g=$('grade');g.className=pass?'g-pass':'g-fail';g.style.display='';
+    g.innerHTML=`<div style="font-size:13px;font-weight:600;margin-bottom:4px;color:${pass?'#4ade80':'#f87171'}">${pass?'✓ Episode Passed':'✗ Episode Ended'}</div>
+      <div class="mono" style="font-size:10px;color:#64748b">Grade: ${(sc*100).toFixed(1)}% · Quality: ${(ql*100).toFixed(1)}% · Steps: ${S.stepNum}</div>`;
+  }catch(e){}
+}
+
+/* ══════ RENDERERS ══════ */
+function rMetrics(){$('mS').textContent=S.stepNum;$('mR').textContent=S.cumReward.toFixed(2);$('mC').textContent=(S.obs?.completion_percentage||0).toFixed(0)+'%';}
+function rQual(obs){
+  if(!obs)return;
+  const p=Math.min(100,(obs.data_quality_score||0)*100),tp=S.target*100;
+  $('qV').textContent=p.toFixed(1)+'%';$('qV').style.color=p>=tp?'#4ade80':'#fbbf24';
+  $('qF').style.width=p+'%';$('qF').className='q-fill '+(p>=tp?'q-good':'q-warn');
+  $('qP').style.left=tp+'%';$('qL').textContent='target '+tp.toFixed(0)+'%';
+}
+function rColStatus(obs){
+  if(!obs)return;$('colCard').style.display='';
+  const g=(id,cols,cls,lbl)=>{const el=$(id);el.innerHTML='';if(!cols?.length)return;
+    el.innerHTML=`<div style="margin-bottom:10px"><span class="grp-lbl">${lbl}</span><div>${cols.map(c=>`<span class="tag ${cls}">${c}</span>`).join('')}</div></div>`;};
+  g('cMiss',obs.missing_columns,'tm','MISSING');
+  g('cAnom',obs.anomaly_columns,'ta','ANOMALIES');
+  g('cStd', obs.standardized_columns,'ts','STANDARDIZED');
+  const la=$('lastAct');
+  if(obs.last_action_result){la.textContent=obs.last_action_result;la.style.display='';}else la.style.display='none';
+}
+function rLog(){
+  const sc=$('logScroll');
+  $('logEmpty').style.display=S.log.length?'none':'';
+  sc.querySelectorAll('.log-entry').forEach(e=>e.remove());
+  S.log.forEach(e=>{
+    const d=document.createElement('div');d.className='log-entry';
+    const rc=e.rw>0?'#4ade80':e.rw<0?'#f87171':'#475569';
+    const rs=(e.rw>=0?'+':'')+e.rw.toFixed(3);
+    d.innerHTML=`<span class="mono" style="font-size:10px;color:#475569">#${e.step}</span>
+      <div><div class="mono" style="font-size:11px;color:#e2e8f0;margin-bottom:2px">${e.at}<span style="color:#334155"> → </span><span style="color:#60a5fa">${e.col}</span>${e.meth?`<span style="color:#475569"> [${e.meth}]</span>`:''}</div>
+      ${e.res?`<div style="font-size:10px;color:#64748b">${e.res}</div>`:''}</div>
+      <div class="mono" style="font-size:11px;font-weight:700;text-align:right;color:${rc}">${rs}</div>`;
+    sc.appendChild(d);
+  });
+  sc.scrollTop=sc.scrollHeight;
+  const ft=$('logFoot');ft.style.display=S.log.length?'flex':'none';
+  $('logCnt').textContent=S.log.length+' actions';$('logTot').textContent='Σ '+S.cumReward.toFixed(3);
+}
+function rSugg(obs){
+  if(!obs)return;
+  const cols=[...(obs.missing_columns||[]),...(obs.anomaly_columns||[])].filter((v,i,a)=>a.indexOf(v)===i);
+  $('colSugg').innerHTML=cols.map(c=>`<option value="${c}"></option>`).join('');
+  if(!$('colIn').value&&cols.length)$('colIn').value=cols[0];
+}
+function setLoad(on){
+  $('btnReset').disabled=on;if(S.running)$('btnStep').disabled=on;
+  $('btnReset').textContent=on?'...':(S.running?'Reset':'Start Episode');
+  $('btnStep').textContent=on?'...':'Execute Step';
+}
+
+/* ══════ FILE UPLOAD ══════ */
+const isNull=v=>{const lv=String(v).toLowerCase().trim();return lv===''||lv==='null'||lv==='nan'||lv==='none'||lv==='n/a';};
+function procFile(file){
+  if(!file.name.toLowerCase().endsWith('.csv')){alert('Please upload a .csv file');return;}
+  const rd=new FileReader();rd.onload=ev=>parseCSV(ev.target.result,file);rd.readAsText(file);
+}
+function parseCSV(text,file){
+  const lines=text.trim().split(/\r?\n/);if(lines.length<2){alert('CSV is empty');return;}
+  csvHeaders=lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));
+  csvData=lines.slice(1).map(line=>{
+    const vals=[];let cur='',inQ=false;
+    for(let i=0;i<line.length;i++){const ch=line[i];if(ch==='"'){inQ=!inQ;continue;}if(ch===','&&!inQ){vals.push(cur.trim());cur='';continue;}cur+=ch;}
+    vals.push(cur.trim());const row={};csvHeaders.forEach((h,i)=>{row[h]=vals[i]??'';});return row;
+  }).filter(r=>Object.values(r).some(v=>v!==''));
+  $('fBar').style.display='flex';$('fName').textContent=file.name;
+  $('fSize').textContent=(file.size/1024).toFixed(1)+' KB · '+csvData.length+' rows';
+  $('btnDl').style.display='';analCSV();prevCSV();
+}
+function analCSV(){
+  let miss=0;
+  const stats=csvHeaders.map(col=>{
+    const vals=csvData.map(r=>r[col]??'');const m=vals.filter(isNull).length;miss+=m;
+    const num=vals.filter(v=>!isNull(v)&&!isNaN(parseFloat(v)));
+    return{col,m,pct:((vals.length-m)/vals.length*100).toFixed(0),isNum:num.length>vals.length*.5};
+  });
+  const q=Math.max(0,1-miss/(csvData.length*csvHeaders.length));
+  $('stGrid').style.display='grid';
+  $('stR').textContent=csvData.length;$('stC').textContent=csvHeaders.length;
+  $('stM').textContent=miss;$('stQ').textContent=(q*100).toFixed(0)+'%';
+  $('colAnal').style.display='';
+  $('analGrid').innerHTML=stats.map(s=>`
+    <div class="csc">
+      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:4px">
+        <span class="mono" style="font-size:11px;font-weight:700;color:#e2e8f0">${s.col}</span>
+        <span class="mono" style="font-size:9px;padding:2px 6px;border-radius:4px;${s.isNum?'color:#60a5fa;background:rgba(96,165,250,.12);border:1px solid rgba(96,165,250,.25)':'color:#a78bfa;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.25)'}">${s.isNum?'numeric':'text'}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:10px">
+        <span style="color:#64748b">${s.pct}% filled</span>
+        <span style="${s.m>0?'color:#f87171':''}">${s.m} missing</span>
+      </div>
+      <div class="csb"><div class="csbf" style="width:${s.pct}%;background:${s.isNum?'#3b82f6':'#8b5cf6'}"></div></div>
+    </div>`).join('');
+}
+function prevCSV(){
+  const LIM=20;$('prevSec').style.display='';
+  $('prevNote').textContent=csvData.length>LIM?`first ${LIM} of ${csvData.length} rows`:`${csvData.length} rows`;
+  $('pH').innerHTML=`<tr>${csvHeaders.map(h=>`<th>${h}</th>`).join('')}</tr>`;
+  $('pB').innerHTML=csvData.slice(0,LIM).map(row=>
+    `<tr>${csvHeaders.map(h=>{const v=row[h]??'';return`<td class="${isNull(v)?'nc':''}">${isNull(v)?'NULL':v}</td>`;}).join('')}</tr>`).join('');
+}
+function dlClean(){
+  const rows=[csvHeaders.join(',')];
+  csvData.forEach(r=>rows.push(csvHeaders.map(h=>{const v=r[h]??'';return String(v).includes(',')?`"${v}"`:v;}).join(',')));
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([rows.join('\n')],{type:'text/csv'}));
+  a.download='cleaned_data.csv';document.body.appendChild(a);a.click();document.body.removeChild(a);
+}
+function clearUp(){
+  csvData=[];csvHeaders=[];$('fInput').value='';
+  ['fBar','colAnal','prevSec'].forEach(id=>$(id).style.display='none');
+  $('stGrid').style.display='none';$('btnDl').style.display='none';
+}
+
+/* ══════ INIT ══════ */
+document.addEventListener('DOMContentLoaded',()=>{
+  $('tEnv').addEventListener('click',    ()=>tab('env'));
+  $('tUpload').addEventListener('click', ()=>tab('upload'));
+  $('btnConn').addEventListener('click', reconnect);
+  $('srvUrl').addEventListener('keydown',e=>{if(e.key==='Enter')reconnect();});
+  document.querySelectorAll('.task-card').forEach(c=>c.addEventListener('click',()=>selTask(c)));
+  $('btnCloseErr').addEventListener('click',()=>$('errBar').style.display='none');
+  $('btnReset').addEventListener('click',handleReset);
+  $('btnStep').addEventListener('click',handleStep);
+  $('aType').addEventListener('change',updateCtrl);
+  $('tSlide').addEventListener('input',()=>$('tVal').textContent=$('tSlide').value);
+  const dz=$('dropZone'),fi=$('fInput');
+  dz.addEventListener('click',()=>fi.click());
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over');});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
+  dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over');if(e.dataTransfer?.files?.[0])procFile(e.dataTransfer.files[0]);});
+  fi.addEventListener('change',e=>{if(e.target.files?.[0])procFile(e.target.files[0]);});
+  $('btnDl').addEventListener('click',dlClean);
+  $('btnClear').addEventListener('click',clearUp);
+  updateCtrl();tab('env');ping();setInterval(ping,30000);
+});
+</script>
 </body>
 </html>
