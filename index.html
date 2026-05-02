@@ -248,8 +248,14 @@ input[type=range]{accent-color:#4ade80;width:100%;cursor:pointer}
         </div>
         <div style="margin-bottom:10px">
           <label class="fl">COLUMN NAME</label>
-          <input id="colIn" type="text" list="colSugg" placeholder="e.g. amount, age, status" class="fc"/>
+          <input id="colIn" type="text" list="colSugg" placeholder="pick from server columns below"
+            class="fc" autocomplete="off" autocorrect="off" spellcheck="false"/>
           <datalist id="colSugg"></datalist>
+          <!-- csv column hint chips -->
+          <div id="colHints" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px"></div>
+          <div id="colHintLabel" style="font-family:'Space Mono',monospace;font-size:9px;color:#334155;margin-top:4px;display:none">
+            ↑ columns from your uploaded CSV file — click to use
+          </div>
         </div>
         <div id="mGrp" style="margin-bottom:10px">
           <label class="fl">METHOD</label>
@@ -285,6 +291,21 @@ input[type=range]{accent-color:#4ade80;width:100%;cursor:pointer}
 
 <!-- ══ FILE UPLOAD ══ -->
 <div id="pUpload" style="display:none">
+
+  <!-- Top bar: file list + add button -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <span class="mono" style="font-size:9px;letter-spacing:.15em;color:#475569">UPLOADED FILES</span>
+    <button id="btnAddFile" style="font-family:'Space Mono',monospace;font-size:10px;font-weight:700;
+      padding:6px 14px;border-radius:8px;background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);
+      color:#4ade80;cursor:pointer;display:flex;align-items:center;gap:6px">
+      + Add CSV File
+    </button>
+  </div>
+
+  <!-- File tabs list -->
+  <div id="fileTabList" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;min-height:0"></div>
+
+  <!-- Drop zone (shown when no files) -->
   <div id="dropZone" class="drop-zone">
     <div style="font-size:48px;margin-bottom:12px">📂</div>
     <p style="font-size:17px;font-weight:600;color:#e2e8f0;margin-bottom:4px">Drop your CSV file here</p>
@@ -293,21 +314,25 @@ input[type=range]{accent-color:#4ade80;width:100%;cursor:pointer}
     <input type="file" id="fInput" accept=".csv" style="display:none"/>
   </div>
 
+  <!-- Active file info bar -->
   <div id="fBar" class="card" style="display:none;flex-direction:row;align-items:center;justify-content:space-between;margin-bottom:12px">
     <div style="display:flex;align-items:center;gap:12px">
       <span style="font-size:24px">📄</span>
-      <div><div id="fName" style="font-size:13px;font-weight:600;color:#e2e8f0"></div>
-           <div id="fSize" class="mono" style="font-size:10px;color:#64748b;margin-top:2px"></div></div>
+      <div>
+        <div id="fName" style="font-size:13px;font-weight:600;color:#e2e8f0"></div>
+        <div id="fSize" class="mono" style="font-size:10px;color:#64748b;margin-top:2px"></div>
+      </div>
     </div>
     <div style="display:flex;gap:8px">
       <button id="btnDl" style="display:none;font-family:'Space Mono',monospace;font-size:10px;font-weight:700;
         padding:6px 12px;border-radius:8px;background:rgba(20,83,45,.3);border:1px solid rgba(74,222,128,.3);color:#4ade80;cursor:pointer">
         ↓ Download Cleaned CSV</button>
       <button id="btnClear" style="font-family:'Space Mono',monospace;font-size:10px;padding:6px 10px;border-radius:6px;
-        background:transparent;border:1px solid #334155;color:#64748b;cursor:pointer">✕ clear</button>
+        background:transparent;border:1px solid #334155;color:#64748b;cursor:pointer">✕ Remove File</button>
     </div>
   </div>
 
+  <!-- Stats -->
   <div id="stGrid" class="stats-g">
     <div class="card" style="text-align:center"><div id="stR" class="mono" style="font-size:22px;font-weight:700;margin-bottom:4px">—</div><div class="mono" style="font-size:9px;color:#475569">ROWS</div></div>
     <div class="card" style="text-align:center"><div id="stC" class="mono" style="font-size:22px;font-weight:700;margin-bottom:4px">—</div><div class="mono" style="font-size:9px;color:#475569">COLUMNS</div></div>
@@ -315,11 +340,13 @@ input[type=range]{accent-color:#4ade80;width:100%;cursor:pointer}
     <div class="card" style="text-align:center"><div id="stQ" class="mono" style="font-size:22px;font-weight:700;margin-bottom:4px;color:#4ade80">—</div><div class="mono" style="font-size:9px;color:#475569">QUALITY</div></div>
   </div>
 
+  <!-- Column analysis -->
   <div id="colAnal" class="card" style="display:none;margin-bottom:12px">
     <span class="sec-lbl">COLUMN ANALYSIS</span>
     <div id="analGrid" class="analysis-g"></div>
   </div>
 
+  <!-- Preview -->
   <div id="prevSec" class="card" style="display:none">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <span class="sec-lbl" style="margin:0">DATA PREVIEW</span>
@@ -334,7 +361,7 @@ input[type=range]{accent-color:#4ade80;width:100%;cursor:pointer}
 </main>
 <script>
 /* ══════ STATE ══════ */
-let API = 'https://surendhar4518-data-cleaning-env.hf.space';
+let API='http://localhost:7860';
 const S={task:'easy_sales_cleaning',target:0.85,running:false,stepNum:0,cumReward:0,obs:null,log:[],loading:false};
 let csvData=[],csvHeaders=[];
 const $=id=>document.getElementById(id);
@@ -345,6 +372,24 @@ function tab(t){
   $('pUpload').style.display=t==='upload'?'':'none';
   $('tEnv').classList.toggle('active',t==='env');
   $('tUpload').classList.toggle('active',t==='upload');
+  // when switching to env, clear colIn and refresh chips
+  if(t==='env'){
+    $('colIn').value='';
+    $('colSugg').innerHTML='';
+    if(S.obs) rSugg(S.obs);   // re-render chips (will use csvHeaders if uploaded)
+    else {
+      // no episode yet — still show CSV chips if available
+      const hints=$('colHints'),lbl=$('colHintLabel');
+      if(hints && csvHeaders.length){
+        if(lbl) lbl.style.display='';
+        hints.innerHTML=csvHeaders.map(c=>
+          `<span onclick="document.getElementById('colIn').value='${c.replace(/'/g,"\\'")}'"
+            style="cursor:pointer;font-family:'Space Mono',monospace;font-size:9px;padding:2px 8px;
+            border-radius:4px;color:#7dd3fc;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.25)">${c}</span>`
+        ).join('');
+      }
+    }
+  }
 }
 
 /* ══════ SERVER ══════ */
@@ -377,6 +422,9 @@ function resetEp(){
   rMetrics();rLog();
   $('colCard').style.display='none';$('grade').style.display='none';
   $('btnReset').textContent='Start Episode';$('btnStep').disabled=true;
+  $('colIn').value='';
+  $('colSugg').innerHTML='';
+  const h=$('colHints');if(h)h.innerHTML='';
   const p=S.target*100;
   $('qP').style.left=p+'%';$('qL').textContent='target '+p.toFixed(0)+'%';
   $('qV').textContent='—';$('qF').style.width='0%';
@@ -472,10 +520,38 @@ function rLog(){
   $('logCnt').textContent=S.log.length+' actions';$('logTot').textContent='Σ '+S.cumReward.toFixed(3);
 }
 function rSugg(obs){
-  if(!obs)return;
-  const cols=[...(obs.missing_columns||[]),...(obs.anomaly_columns||[])].filter((v,i,a)=>a.indexOf(v)===i);
-  $('colSugg').innerHTML=cols.map(c=>`<option value="${c}"></option>`).join('');
-  if(!$('colIn').value&&cols.length)$('colIn').value=cols[0];
+  if(!obs) return;
+  const missing = [...(obs.missing_columns||[])];
+  const anomaly = [...(obs.anomaly_columns||[])];
+  const serverCols = [...missing, ...anomaly].filter((v,i,a)=>a.indexOf(v)===i);
+
+  // datalist: show server columns for dropdown autocomplete
+  $('colSugg').innerHTML = serverCols.map(c=>`<option value="${c}"></option>`).join('');
+
+  // always reset input to first SERVER column
+  $('colIn').value = serverCols.length ? serverCols[0] : '';
+
+  // chips: show CSV file columns if uploaded, else fall back to server columns
+  const hints     = $('colHints');
+  const hintLabel = $('colHintLabel');
+  if (!hints) return;
+
+  const chipCols  = csvHeaders.length > 0 ? csvHeaders : serverCols;
+  const isCSV     = csvHeaders.length > 0;
+
+  if (hintLabel) hintLabel.style.display = isCSV ? '' : 'none';
+
+  hints.innerHTML = chipCols.map(c => {
+    const isMissing = missing.includes(c);
+    const color = isCSV
+      ? 'color:#7dd3fc;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.25)'   // blue for CSV
+      : isMissing
+        ? 'color:#fca5a5;background:rgba(220,38,38,.12);border:1px solid rgba(220,38,38,.25)'  // red for missing
+        : 'color:#fcd34d;background:rgba(217,119,6,.12);border:1px solid rgba(217,119,6,.25)'; // amber for anomaly
+    return `<span onclick="document.getElementById('colIn').value='${c.replace(/'/g,"\\'")}'"
+      style="cursor:pointer;font-family:'Space Mono',monospace;font-size:9px;padding:2px 8px;
+      border-radius:4px;transition:opacity .15s;${color}">${c}</span>`;
+  }).join('');
 }
 function setLoad(on){
   $('btnReset').disabled=on;if(S.running)$('btnStep').disabled=on;
@@ -483,41 +559,107 @@ function setLoad(on){
   $('btnStep').textContent=on?'...':'Execute Step';
 }
 
-/* ══════ FILE UPLOAD ══════ */
+/* ══════ FILE UPLOAD — multi-file manager ══════ */
 const isNull=v=>{const lv=String(v).toLowerCase().trim();return lv===''||lv==='null'||lv==='nan'||lv==='none'||lv==='n/a';};
+
+// file store: [{name, size, headers, data}]
+let files=[], activeIdx=-1;
+
+function showDropZone(show){
+  $('dropZone').style.display = show ? '' : 'none';
+}
+
+function renderFileTabs(){
+  const list=$('fileTabList');
+  list.innerHTML='';
+  if(files.length===0){ showDropZone(true); return; }
+  showDropZone(false);
+  files.forEach((f,i)=>{
+    const btn=document.createElement('button');
+    btn.style.cssText=`font-family:'Space Mono',monospace;font-size:10px;font-weight:700;
+      padding:6px 12px;border-radius:8px;cursor:pointer;transition:all .15s;
+      background:${i===activeIdx?'#1e3a2f':'#0f172a'};
+      border:1px solid ${i===activeIdx?'rgba(74,222,128,.5)':'#1e293b'};
+      color:${i===activeIdx?'#4ade80':'#64748b'};
+      display:flex;align-items:center;gap:6px`;
+    btn.innerHTML=`📄 ${f.name} <span style="opacity:.5;font-size:9px">${f.rows}r</span>
+      <span class="rm-btn" data-idx="${i}" style="margin-left:4px;color:#475569;font-size:12px">×</span>`;
+    btn.addEventListener('click', e=>{
+      if(e.target.classList.contains('rm-btn')){
+        removeFile(parseInt(e.target.dataset.idx)); return;
+      }
+      setActive(i);
+    });
+    list.appendChild(btn);
+  });
+}
+
+function setActive(i){
+  activeIdx=i;
+  renderFileTabs();
+  if(i<0||i>=files.length){ hideFileDetails(); return; }
+  const f=files[i];
+  $('fBar').style.display='flex';
+  $('fName').textContent=f.name;
+  $('fSize').textContent=f.sizeStr+' · '+f.rows+' rows · '+f.headers.length+' columns';
+  $('btnDl').style.display='';
+  // set globals for download
+  csvData=f.data; csvHeaders=f.headers;
+  analCSV(f); prevCSV(f);
+}
+
+function hideFileDetails(){
+  ['fBar','colAnal','prevSec'].forEach(id=>$(id).style.display='none');
+  $('stGrid').style.display='none';
+}
+
+function removeFile(i){
+  files.splice(i,1);
+  if(files.length===0){ activeIdx=-1; hideFileDetails(); renderFileTabs(); return; }
+  const newIdx=Math.min(i, files.length-1);
+  setActive(newIdx);
+  renderFileTabs();
+}
+
 function procFile(file){
   if(!file.name.toLowerCase().endsWith('.csv')){alert('Please upload a .csv file');return;}
   const rd=new FileReader();rd.onload=ev=>parseCSV(ev.target.result,file);rd.readAsText(file);
 }
+
 function parseCSV(text,file){
   const lines=text.trim().split(/\r?\n/);if(lines.length<2){alert('CSV is empty');return;}
-  csvHeaders=lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));
-  csvData=lines.slice(1).map(line=>{
+  const headers=lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));
+  const data=lines.slice(1).map(line=>{
     const vals=[];let cur='',inQ=false;
     for(let i=0;i<line.length;i++){const ch=line[i];if(ch==='"'){inQ=!inQ;continue;}if(ch===','&&!inQ){vals.push(cur.trim());cur='';continue;}cur+=ch;}
-    vals.push(cur.trim());const row={};csvHeaders.forEach((h,i)=>{row[h]=vals[i]??'';});return row;
+    vals.push(cur.trim());const row={};headers.forEach((h,i)=>{row[h]=vals[i]??'';});return row;
   }).filter(r=>Object.values(r).some(v=>v!==''));
-  $('fBar').style.display='flex';$('fName').textContent=file.name;
-  $('fSize').textContent=(file.size/1024).toFixed(1)+' KB · '+csvData.length+' rows';
-  $('btnDl').style.display='';analCSV();prevCSV();
+
+  // check if file already loaded
+  const existing=files.findIndex(f=>f.name===file.name);
+  const entry={name:file.name,sizeStr:(file.size/1024).toFixed(1)+' KB',rows:data.length,headers,data};
+  if(existing>=0){ files[existing]=entry; setActive(existing); }
+  else { files.push(entry); setActive(files.length-1); }
+  renderFileTabs();
 }
-function analCSV(){
-  let miss=0;
-  const stats=csvHeaders.map(col=>{
-    const vals=csvData.map(r=>r[col]??'');const m=vals.filter(isNull).length;miss+=m;
+
+function analCSV(f){
+  const {headers,data}=f;let miss=0;
+  const stats=headers.map(col=>{
+    const vals=data.map(r=>r[col]??'');const m=vals.filter(isNull).length;miss+=m;
     const num=vals.filter(v=>!isNull(v)&&!isNaN(parseFloat(v)));
     return{col,m,pct:((vals.length-m)/vals.length*100).toFixed(0),isNum:num.length>vals.length*.5};
   });
-  const q=Math.max(0,1-miss/(csvData.length*csvHeaders.length));
+  const q=Math.max(0,1-miss/(data.length*headers.length));
   $('stGrid').style.display='grid';
-  $('stR').textContent=csvData.length;$('stC').textContent=csvHeaders.length;
+  $('stR').textContent=data.length;$('stC').textContent=headers.length;
   $('stM').textContent=miss;$('stQ').textContent=(q*100).toFixed(0)+'%';
   $('colAnal').style.display='';
   $('analGrid').innerHTML=stats.map(s=>`
     <div class="csc">
       <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:4px">
-        <span class="mono" style="font-size:11px;font-weight:700;color:#e2e8f0">${s.col}</span>
-        <span class="mono" style="font-size:9px;padding:2px 6px;border-radius:4px;${s.isNum?'color:#60a5fa;background:rgba(96,165,250,.12);border:1px solid rgba(96,165,250,.25)':'color:#a78bfa;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.25)'}">${s.isNum?'numeric':'text'}</span>
+        <span class="mono" style="font-size:11px;font-weight:700;color:#e2e8f0;word-break:break-all">${s.col}</span>
+        <span class="mono" style="font-size:9px;padding:2px 6px;border-radius:4px;white-space:nowrap;margin-left:6px;${s.isNum?'color:#60a5fa;background:rgba(96,165,250,.12);border:1px solid rgba(96,165,250,.25)':'color:#a78bfa;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.25)'}">${s.isNum?'numeric':'text'}</span>
       </div>
       <div style="display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:10px">
         <span style="color:#64748b">${s.pct}% filled</span>
@@ -526,23 +668,27 @@ function analCSV(){
       <div class="csb"><div class="csbf" style="width:${s.pct}%;background:${s.isNum?'#3b82f6':'#8b5cf6'}"></div></div>
     </div>`).join('');
 }
-function prevCSV(){
-  const LIM=20;$('prevSec').style.display='';
-  $('prevNote').textContent=csvData.length>LIM?`first ${LIM} of ${csvData.length} rows`:`${csvData.length} rows`;
-  $('pH').innerHTML=`<tr>${csvHeaders.map(h=>`<th>${h}</th>`).join('')}</tr>`;
-  $('pB').innerHTML=csvData.slice(0,LIM).map(row=>
-    `<tr>${csvHeaders.map(h=>{const v=row[h]??'';return`<td class="${isNull(v)?'nc':''}">${isNull(v)?'NULL':v}</td>`;}).join('')}</tr>`).join('');
+
+function prevCSV(f){
+  const {headers,data}=f,LIM=20;
+  $('prevSec').style.display='';
+  $('prevNote').textContent=data.length>LIM?`first ${LIM} of ${data.length} rows`:`${data.length} rows`;
+  $('pH').innerHTML=`<tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr>`;
+  $('pB').innerHTML=data.slice(0,LIM).map(row=>
+    `<tr>${headers.map(h=>{const v=row[h]??'';return`<td class="${isNull(v)?'nc':''}">${isNull(v)?'NULL':v}</td>`;}).join('')}</tr>`).join('');
 }
+
 function dlClean(){
-  const rows=[csvHeaders.join(',')];
-  csvData.forEach(r=>rows.push(csvHeaders.map(h=>{const v=r[h]??'';return String(v).includes(',')?`"${v}"`:v;}).join(',')));
+  if(activeIdx<0)return;
+  const {headers,data,name}=files[activeIdx];
+  const rows=[headers.join(',')];
+  data.forEach(r=>rows.push(headers.map(h=>{const v=r[h]??'';return String(v).includes(',')?`"${v}"`:v;}).join(',')));
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([rows.join('\n')],{type:'text/csv'}));
-  a.download='cleaned_data.csv';document.body.appendChild(a);a.click();document.body.removeChild(a);
+  a.download='cleaned_'+name;document.body.appendChild(a);a.click();document.body.removeChild(a);
 }
+
 function clearUp(){
-  csvData=[];csvHeaders=[];$('fInput').value='';
-  ['fBar','colAnal','prevSec'].forEach(id=>$(id).style.display='none');
-  $('stGrid').style.display='none';$('btnDl').style.display='none';
+  if(activeIdx>=0) removeFile(activeIdx);
 }
 
 /* ══════ INIT ══════ */
@@ -557,15 +703,30 @@ document.addEventListener('DOMContentLoaded',()=>{
   $('btnStep').addEventListener('click',handleStep);
   $('aType').addEventListener('change',updateCtrl);
   $('tSlide').addEventListener('input',()=>$('tVal').textContent=$('tSlide').value);
+
+  // file upload — drop zone + hidden input
   const dz=$('dropZone'),fi=$('fInput');
   dz.addEventListener('click',()=>fi.click());
   dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over');});
   dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
-  dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over');if(e.dataTransfer?.files?.[0])procFile(e.dataTransfer.files[0]);});
-  fi.addEventListener('change',e=>{if(e.target.files?.[0])procFile(e.target.files[0]);});
+  dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over');
+    Array.from(e.dataTransfer?.files||[]).forEach(f=>procFile(f));});
+  fi.addEventListener('change',e=>{Array.from(e.target.files||[]).forEach(f=>procFile(f));fi.value='';});
+
+  // Add CSV button (separate hidden input so it doesn't conflict)
+  const addInput=document.createElement('input');
+  addInput.type='file';addInput.accept='.csv';addInput.multiple=true;addInput.style.display='none';
+  document.body.appendChild(addInput);
+  addInput.addEventListener('change',e=>{Array.from(e.target.files||[]).forEach(f=>procFile(f));addInput.value='';});
+  $('btnAddFile').addEventListener('click',()=>addInput.click());
+
   $('btnDl').addEventListener('click',dlClean);
   $('btnClear').addEventListener('click',clearUp);
-  updateCtrl();tab('env');ping();setInterval(ping,30000);
+
+  // init
+  updateCtrl();tab('env');
+  renderFileTabs();
+  ping();setInterval(ping,30000);
 });
 </script>
 </body>
